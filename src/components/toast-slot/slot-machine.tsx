@@ -11,10 +11,15 @@ import {
   Trophy,
   Wine,
   PencilLine,
+  Volume2,
+  VolumeX,
+  Check,
+  PartyPopper,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { getSoundEngine } from "@/lib/sounds";
 
 interface SlotMachineProps {
   licenseKey: string;
@@ -61,12 +66,35 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
   const [winner, setWinner] = useState<string | null>(null);
   const [showWinner, setShowWinner] = useState(false);
 
+  // Names that have already given a toast in THIS session — they won't be
+  // picked again until the user starts a new round.
+  const [spoken, setSpoken] = useState<string[]>([]);
+  const [allDone, setAllDone] = useState(false);
+
+  const [muted, setMuted] = useState(false);
+
   const stripRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentWinnerIdxRef = useRef(0);
   const [spinDuration, setSpinDuration] = useState(8000);
 
-  const strip = useMemo(() => (names.length ? buildStrip(names) : []), [names]);
+  const sound = useMemo(() => getSoundEngine(), []);
+
+  // Build the reel strip from the REMAINING (not yet spoken) names so that
+  // already-toasted guests literally do not appear on the spinning reel.
+  const remaining = useMemo(
+    () => names.filter((n) => !spoken.includes(n)),
+    [names, spoken]
+  );
+  const strip = useMemo(
+    () => (remaining.length ? buildStrip(remaining) : []),
+    [remaining]
+  );
+
+  // Sync mute state into the sound engine.
+  useEffect(() => {
+    sound.setMuted(muted);
+  }, [muted, sound]);
 
   // Position the reel at the start (first repeat, winner centered) without transition.
   const resetReelTo = useCallback((winnerIdx: number) => {
@@ -80,17 +108,18 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
 
   useEffect(() => {
     // when names change & not spinning, reset reel to show first guest centered
-    if (!spinning && names.length) {
+    if (!spinning && remaining.length) {
       currentWinnerIdxRef.current = 0;
       resetReelTo(0);
     }
-  }, [names, spinning, resetReelTo]);
+  }, [remaining, spinning, resetReelTo]);
 
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      sound.stopSpinLoop();
     };
-  }, []);
+  }, [sound]);
 
   function handleLoadNames() {
     const parsed = parseNames(rawNames);
@@ -99,20 +128,29 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
     }
     setWinner(null);
     setShowWinner(false);
+    setSpoken([]);
+    setAllDone(false);
     setNames(parsed);
     currentWinnerIdxRef.current = 0;
     setEditing(false);
+    sound.uiClick();
     // reset reel after render
     requestAnimationFrame(() => resetReelTo(0));
   }
 
   function spin() {
-    if (spinning || names.length < 2) return;
+    if (spinning || remaining.length < 1) return;
+    if (remaining.length === 0) return;
     const el = stripRef.current;
     if (!el) return;
 
-    const k = names.length;
-    const winnerIdx = Math.floor(Math.random() * k);
+    const k = remaining.length;
+
+    // Last remaining guest — special case: just pick them directly (no real
+    // "spin" needed), but still play the show for theatre.
+    const winnerIdx =
+      k === 1 ? 0 : Math.floor(Math.random() * k);
+    const winnerName = remaining[winnerIdx];
 
     // 1. Reset (instant) to current winner centered in an early repeat so the
     //    center item visually stays the same, then spin forward.
@@ -121,12 +159,18 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
     // 2. Spin to the winner near the end of the strip.
     const finalIndex = (REPEATS - 2) * k + winnerIdx;
     const duration =
-      SPIN_MIN_MS + Math.floor(Math.random() * (SPIN_MAX_MS - SPIN_MIN_MS));
+      k === 1
+        ? SPIN_MIN_MS
+        : SPIN_MIN_MS + Math.floor(Math.random() * (SPIN_MAX_MS - SPIN_MIN_MS));
     setSpinDuration(duration);
 
     setSpinning(true);
     setWinner(null);
     setShowWinner(false);
+
+    // Sound: lever thunk + start the continuous spin loop.
+    sound.clickSpin();
+    sound.startSpinLoop(duration);
 
     // apply transition on next frame
     requestAnimationFrame(() => {
@@ -140,23 +184,64 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       setSpinning(false);
-      setWinner(names[winnerIdx]);
+      // Sound: reel locks in, then the win fanfare.
+      sound.stopSpinLoop();
+      sound.reelStop();
+      // tiny beat between the clunk and the fanfare
+      setTimeout(() => sound.winFanfare(), 220);
+
+      setWinner(winnerName);
       setShowWinner(true);
+      setSpoken((prev) =>
+        prev.includes(winnerName) ? prev : [...prev, winnerName]
+      );
       currentWinnerIdxRef.current = winnerIdx;
+
+      // If that was the last remaining guest, mark the round complete.
+      if (remaining.length <= 1) {
+        setTimeout(() => setAllDone(true), 2600);
+      }
     }, duration + 80);
   }
 
   function spinAgain() {
+    sound.uiClick();
     setShowWinner(false);
     setWinner(null);
+    // If everyone has spoken, "Крутить снова" should instead reveal the
+    // round-complete state.
+    if (remaining.length <= 1) {
+      setAllDone(true);
+      return;
+    }
     setTimeout(() => spin(), 250);
   }
 
   function editList() {
+    sound.uiClick();
     setShowWinner(false);
     setWinner(null);
     setEditing(true);
   }
+
+  function startNewRound() {
+    sound.uiClick();
+    setSpoken([]);
+    setAllDone(false);
+    setShowWinner(false);
+    setWinner(null);
+    currentWinnerIdxRef.current = 0;
+    requestAnimationFrame(() => resetReelTo(0));
+  }
+
+  function toggleMute() {
+    const m = sound.toggleMuted();
+    setMuted(m);
+  }
+
+  const remainingCount = remaining.length;
+  const spokenCount = spoken.length;
+  const totalCount = names.length;
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-[#1a0f0a] text-amber-50">
@@ -185,11 +270,27 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
             <Button
               variant="outline"
               size="sm"
+              onClick={toggleMute}
+              aria-label={muted ? "Включить звук" : "Выключить звук"}
+              className="border-amber-700/40 bg-transparent text-amber-200 hover:bg-amber-900/30 hover:text-amber-100"
+            >
+              {muted ? (
+                <VolumeX className="h-4 w-4" />
+              ) : (
+                <Volume2 className="h-4 w-4" />
+              )}
+              <span className="ml-1 hidden sm:inline">
+                {muted ? "Звук выкл" : "Звук вкл"}
+              </span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={editList}
               className="border-amber-700/40 bg-transparent text-amber-200 hover:bg-amber-900/30 hover:text-amber-100"
             >
-              <PencilLine className="mr-1 h-4 w-4" />
-              <span className="hidden sm:inline">Список</span>
+              <PencilLine className="h-4 w-4" />
+              <span className="ml-1 hidden sm:inline">Список</span>
             </Button>
             <Button
               variant="ghost"
@@ -197,8 +298,8 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
               onClick={onLogout}
               className="text-amber-200/60 hover:bg-amber-900/30 hover:text-amber-100"
             >
-              <LogOut className="mr-1 h-4 w-4" />
-              <span className="hidden sm:inline">Выход</span>
+              <LogOut className="h-4 w-4" />
+              <span className="ml-1 hidden sm:inline">Выход</span>
             </Button>
           </div>
         </header>
@@ -353,7 +454,7 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
                   })}
                 </div>
 
-                {names.length === 0 && (
+                {remaining.length === 0 && (
                   <div className="absolute inset-0 flex items-center justify-center text-amber-700/40">
                     Загрузите список гостей
                   </div>
@@ -366,7 +467,7 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
                   whileHover={{ scale: spinning ? 1 : 1.04 }}
                   whileTap={{ scale: spinning ? 1 : 0.96 }}
                   onClick={spin}
-                  disabled={spinning || names.length < 2}
+                  disabled={spinning || remaining.length < 1}
                   className="group relative h-20 w-20 overflow-hidden rounded-full bg-gradient-to-b from-rose-500 to-rose-700 shadow-xl shadow-rose-900/50 ring-4 ring-amber-400/40 transition disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span className="absolute inset-0 rounded-full bg-gradient-to-t from-transparent to-white/20" />
@@ -377,7 +478,11 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
                   )}
                 </motion.button>
                 <span className="text-xs font-semibold uppercase tracking-wider text-amber-200/70">
-                  {spinning ? "Крутится..." : "Крутить барабан"}
+                  {spinning
+                    ? "Крутится..."
+                    : remaining.length === 1
+                      ? "Последний тостующийся!"
+                      : "Крутить барабан"}
                 </span>
                 {spinning && (
                   <div className="mt-1 h-1 w-48 overflow-hidden rounded-full bg-amber-950/60">
@@ -393,11 +498,52 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
             </div>
           </div>
 
-          {/* Guest count badge */}
+          {/* Progress: who has spoken / who is left */}
           {!editing && names.length > 0 && (
-            <div className="flex items-center gap-2 rounded-full border border-amber-700/30 bg-amber-950/30 px-4 py-1.5 text-sm text-amber-200/70">
-              <Users className="h-4 w-4" />
-              Гостей: <span className="font-bold text-amber-200">{names.length}</span>
+            <div className="w-full max-w-3xl">
+              {/* progress bar */}
+              <div className="mb-2 flex items-center justify-between text-xs text-amber-200/60">
+                <span className="flex items-center gap-1.5">
+                  <Trophy className="h-3.5 w-3.5 text-amber-400" />
+                  Тостов прозвучало:{" "}
+                  <span className="font-bold text-amber-200">
+                    {spokenCount}
+                  </span>{" "}
+                  из{" "}
+                  <span className="font-bold text-amber-200">{totalCount}</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5" />
+                  Осталось:{" "}
+                  <span className="font-bold text-amber-200">
+                    {remainingCount}
+                  </span>
+                </span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-amber-950/60">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-amber-400 to-amber-600"
+                  animate={{
+                    width: `${totalCount ? (spokenCount / totalCount) * 100 : 0}%`,
+                  }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                />
+              </div>
+
+              {/* spoken chips */}
+              {spoken.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {spoken.map((n) => (
+                    <span
+                      key={n}
+                      className="inline-flex items-center gap-1 rounded-full border border-amber-700/40 bg-amber-950/40 px-2.5 py-1 text-xs text-amber-200/80"
+                    >
+                      <Check className="h-3 w-3 text-emerald-400" />
+                      {n}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </main>
@@ -410,8 +556,19 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
 
       {/* Winner overlay */}
       <AnimatePresence>
-        {showWinner && winner && (
+        {showWinner && winner && !allDone && (
           <WinnerOverlay winner={winner} onAgain={spinAgain} onEdit={editList} />
+        )}
+      </AnimatePresence>
+
+      {/* Round-complete overlay */}
+      <AnimatePresence>
+        {allDone && (
+          <RoundCompleteOverlay
+            spoken={spoken}
+            onNewRound={startNewRound}
+            onEdit={editList}
+          />
         )}
       </AnimatePresence>
     </div>
@@ -478,6 +635,92 @@ function WinnerOverlay({
           >
             <RotateCcw className="mr-1 h-4 w-4" />
             Крутить снова
+          </Button>
+          <Button
+            variant="outline"
+            onClick={onEdit}
+            className="border-amber-700/40 bg-transparent text-amber-200 hover:bg-amber-900/30 hover:text-amber-100"
+          >
+            <PencilLine className="mr-1 h-4 w-4" />
+            Изменить список
+          </Button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function RoundCompleteOverlay({
+  spoken,
+  onNewRound,
+  onEdit,
+}: {
+  spoken: string[];
+  onNewRound: () => void;
+  onEdit: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="absolute inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm"
+    >
+      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-500/20 blur-3xl" />
+      <Confetti />
+
+      <motion.div
+        initial={{ scale: 0.7, y: 20, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 200, damping: 18 }}
+        className="relative z-10 mx-4 w-full max-w-lg rounded-3xl border-2 border-amber-400/60 bg-gradient-to-b from-[#2a1810] to-[#1a0f0a] p-8 text-center shadow-2xl"
+      >
+        <motion.div
+          initial={{ scale: 0, rotate: -20 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 260, damping: 12, delay: 0.1 }}
+          className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-300 to-amber-600 shadow-lg shadow-amber-900/60"
+        >
+          <PartyPopper className="h-11 w-11 text-[#1a0f0a]" />
+        </motion.div>
+
+        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-amber-400/80">
+          Все тосты прозвучали!
+        </p>
+        <motion.h2
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mt-2 bg-gradient-to-b from-amber-100 to-amber-400 bg-clip-text text-3xl font-black text-transparent sm:text-4xl"
+        >
+          Раунд завершён
+        </motion.h2>
+        <p className="mt-3 text-sm text-amber-200/70">
+          Каждый гость из списка уже произнёс свой тост. Можно начать новый раунд
+          — тогда список тостующихся сбросится.
+        </p>
+
+        {spoken.length > 0 && (
+          <div className="mt-4 flex flex-wrap justify-center gap-1.5">
+            {spoken.map((n, i) => (
+              <span
+                key={n}
+                className="inline-flex items-center gap-1 rounded-full border border-amber-700/40 bg-amber-950/40 px-2.5 py-1 text-xs text-amber-200/80"
+              >
+                <span className="text-amber-500/70">{i + 1}.</span>
+                {n}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+          <Button
+            onClick={onNewRound}
+            className="bg-gradient-to-b from-amber-400 to-amber-600 font-bold text-[#1a0f0a] hover:from-amber-300 hover:to-amber-500"
+          >
+            <RotateCcw className="mr-1 h-4 w-4" />
+            Новый раунд
           </Button>
           <Button
             variant="outline"

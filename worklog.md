@@ -35,3 +35,43 @@ Stage Summary:
 - Reset 2 test-activated keys back to available → all 100 keys available for delivery.
 - No runtime/console errors in dev.log; all API routes return 200.
 - Artifacts: `src/lib/license.ts`, `src/lib/fingerprint.ts`, `src/app/api/license/{activate,verify,admin/list,admin/revoke}/route.ts`, `src/components/toast-slot/{license-gate,slot-machine,admin-panel}.tsx`, `scripts/generate-keys.ts`, `download/license-keys.txt`.
+
+---
+Task ID: 2
+Agent: main (Z.ai Code)
+Task: Add casino-style sounds to the slot machine game, and ensure that guests who already gave a toast in the current session are never picked again.
+
+Work Log:
+- Created `src/lib/sounds.ts`: a singleton Web Audio API sound engine that synthesizes ALL sounds at runtime (zero audio asset files, fully offline). Sounds:
+  - `clickSpin` — chunky lever-pull thunk (sawtooth glide 180→60Hz + filtered noise clack)
+  - `tick` — short square blip as each name passes the center line
+  - `startSpinLoop/stopSpinLoop` — continuous mechanical hum (sawtooth through lowpass + LFO vibrato) + periodic ticking that slows down (ease-out) as the spin nears its end
+  - `reelStop` — low sine thud (140→45Hz) + noise clack + triangle "lock" ping
+  - `winFanfare` — ascending C-major-pentatonic arpeggio (C5-E5-G5-A5-C6) with octave-up sparkle, landing on a C-major chord + 3 coin dings
+  - `coin` — two-tone bell (E6 + E7)
+  - `uiClick` — soft UI click for buttons
+  - `setMuted/toggleMuted` — master gain ramp to 0
+  - AudioContext created lazily on first user gesture (spin button click) per browser autoplay policy.
+- Rewrote `src/components/toast-slot/slot-machine.tsx`:
+  - Added `spoken: string[]` state + `remaining` memo (names not yet spoken).
+  - The reel strip is now built from `remaining` only — already-toasted guests literally disappear from the spinning reel, so they cannot be picked again.
+  - On each spin, winner is chosen from `remaining`; after reveal, name is pushed to `spoken`.
+  - Added `allDone` state: when the last remaining guest is picked, after ~2.6s the round-complete overlay shows ("ВСЕ ТОСТЫ ПРОЗВУЧАЛИ!" / "Раунд завершён") listing everyone who spoke, with "Новый раунд" (resets spoken list) and "Изменить список" buttons.
+  - Special-case: when only 1 guest remains, still spin for theatre but pick them directly.
+  - Sound triggers wired across the full lifecycle: spin button → clickSpin + startSpinLoop(duration); reel stops → stopSpinLoop + reelStop; +220ms → winFanfare; uiClick on list/admin/reset/mute buttons.
+  - Added header mute toggle button (Volume2/VolumeX icons, label "Звук вкл/выкл").
+  - Added progress UI under the cabinet: "Тостов прозвучало: X из Y" + "Осталось: Z" + gradient progress bar + spoken-name chips with green check icons.
+  - Spin button label changes to "Последний тостующийся!" when 1 remains.
+- Lint: clean (0 errors / 0 warnings). Dev server compiles cleanly.
+
+Stage Summary:
+- Sounds: full casino soundscape synthesized via Web Audio API — spin whirr + slowing ticks during the 7–10s spin, clunk on reel stop, triumphant fanfare + coin dings on winner reveal, UI clicks. No external audio files (works offline). Mute toggle in header.
+- No-repeat: verified end-to-end in Agent Browser:
+  - Spin 1 winner "Елена Соколова" → progress 1/8, remaining 7, Елена removed from reel strip (only 2 DOM occurrences = chip + overlay vs 14 for unspoken names).
+  - Spin 2 winner "Мария Иванова" → progress 2/8, remaining 6, both prior winners in spoken chips.
+  - 2-person list: after both win → "Раунд завершён" overlay with party-popper icon + spoken list + "Новый раунд" button → click resets to 0 spoken / 2 remaining.
+- VLM visual review of round-complete screen: party-popper icon, heading, spoken list, new-round button all present, no visual issues.
+- Web Audio API confirmed usable (AudioContext reports "running"); no `<audio>` elements in DOM (pure synthesis).
+- No console/runtime errors; dev.log clean; all API routes 200.
+- Test key TOAST-BDGX-DD7F-AP2N-FAA5 reset back to available.
+- Artifacts: `src/lib/sounds.ts`, rewritten `src/components/toast-slot/slot-machine.tsx`.
