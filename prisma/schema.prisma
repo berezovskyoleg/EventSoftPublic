@@ -1,0 +1,27 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// A license key. One key binds to exactly one machine (browser fingerprint)
+// the first time it is used. After that it can only be used on that same machine.
+model LicenseKey {
+  id                 String    @id @default(cuid())
+  key                String    @unique
+  // Null until the key is activated on a machine for the first time.
+  machineFingerprint String?
+  activatedAt        DateTime?
+  lastVerifiedAt     DateTime?
+  // Can be revoked by the seller.
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+
+  @@index([machineFingerprint])
+}
