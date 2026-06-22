@@ -75,7 +75,26 @@ impl LicenseStore {
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| e.to_string())?;
 
+        // Load a fixed pool of keys shipped with the application so every
+        // installation uses the same license key list.
+        let fixed_keys: Vec<String> = include_str!("../keys.txt")
+            .lines()
+            .map(|s| s.trim().to_uppercase())
+            .filter(|s| !s.is_empty())
+            .collect();
+
         let mut new_keys = Vec::with_capacity(missing);
+        for key in fixed_keys {
+            if existing.contains(&key) || new_keys.contains(&key) {
+                continue;
+            }
+            new_keys.push(key);
+            if new_keys.len() >= missing {
+                break;
+            }
+        }
+
+        // Fallback to generated keys only if the bundled pool is exhausted.
         let mut guard = 0;
         while new_keys.len() < missing && guard < missing * 50 {
             guard += 1;
