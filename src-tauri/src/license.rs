@@ -10,6 +10,17 @@ const SEGMENT_LENGTH: usize = 4;
 const SEGMENT_COUNT: usize = 4;
 const TARGET_KEYS: usize = 100;
 
+/// Fixed pool of license keys shipped with the application.
+/// Every installation uses the same list, so any key given to a customer
+/// is guaranteed to be accepted.
+fn fixed_keys() -> Vec<String> {
+    include_str!("../keys.txt")
+        .lines()
+        .map(|s| normalize_key(s))
+        .filter(|s| !s.is_empty())
+        .collect()
+}
+
 pub struct LicenseStore {
     db_path: PathBuf,
 }
@@ -138,7 +149,21 @@ impl LicenseStore {
 
         let (id, machine_fp, is_active) = match row {
             Some(r) => r,
-            None => return Err("Лицензионный ключ не найден.".into()),
+            None => {
+                // Key not in the local DB yet. If it belongs to the fixed
+                // pool shipped with the app, insert it on demand so any sold
+                // key works even on devices with an old/empty database.
+                if !fixed_keys().contains(&key) {
+                    return Err("Лицензионный ключ не найден.".into());
+                }
+                conn.execute(
+                    "INSERT INTO license_keys (key) VALUES (?1)",
+                    [&key],
+                )
+                .map_err(|e| e.to_string())?;
+                let id = conn.last_insert_rowid();
+                (id, None, true)
+            }
         };
 
         if !is_active {
@@ -196,25 +221,43 @@ impl LicenseStore {
 
         let (id, machine_fp, is_active) = match row {
             Some(r) => r,
-            None => return Err("Ключ не найден.".into()),
+            None => {
+                if !fixed_keys().contains(&key) {
+                    return Err("Ключ не найден.".into());
+                }
+                conn.execute("INSERT INTO license_keys (key) VALUES (?1)", [&key])
+                    .map_err(|e| e.to_string())?;
+                let id = conn.last_insert_rowid();
+                (id, None, true)
+            }
         };
 
         if !is_active {
             return Err("Ключ отозван.".into());
         }
 
-        match machine_fp {
-            Some(fp) if fp == fp_hash => {
-                let now = Utc::now().to_rfc3339();
-                conn.execute(
-                    "UPDATE license_keys SET last_verified_at = ?1 WHERE id = ?2",
-                    [&now, &id.to_string()],
-                )
-                .map_err(|e| e.to_string())?;
-                Ok(serde_json::json!({ "ok": true, "key": key }))
-            }
-            _ => Err("Ключ не привязан к этому устройству.".into()),
+        let now = Utc::now().to_rfc3339();
+
+        if machine_fp.is_none() {
+            // First verification of a valid key binds it to this device.
+            conn.execute(
+                "UPDATE license_keys SET machine_fingerprint = ?1, activated_at = ?2, last_verified_at = ?2 WHERE id = ?3",
+                [&fp_hash, &now, &id.to_string()],
+            )
+            .map_err(|e| e.to_string())?;
+            return Ok(serde_json::json!({ "ok": true, "key": key }));
         }
+
+        if machine_fp.as_ref().unwrap() != &fp_hash {
+            return Err("Ключ не привязан к этому устройству.".into());
+        }
+
+        conn.execute(
+            "UPDATE license_keys SET last_verified_at = ?1 WHERE id = ?2",
+            [&now, &id.to_string()],
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(serde_json::json!({ "ok": true, "key": key }))
     }
 
     pub fn list_keys(&self) -> Result<Vec<(String, Option<String>, bool)>, String> {

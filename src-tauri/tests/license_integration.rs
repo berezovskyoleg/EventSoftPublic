@@ -168,6 +168,39 @@ fn key_normalization_ignores_case_and_whitespace() {
 }
 
 #[test]
+fn fixed_key_works_without_being_pre_inserted() {
+    let db = temp_db();
+    let store = LicenseStore::open(&db).unwrap();
+
+    // Remove all keys to simulate an old/empty database on a customer device.
+    store.reset_all_keys().unwrap();
+    let conn = rusqlite::Connection::open(&db).unwrap();
+    conn.execute("DELETE FROM license_keys", []).unwrap();
+    drop(conn);
+
+    // A key from the shipped fixed pool should still activate, even though
+    // it is not present in the local database yet.
+    let fixed_key = "TOAST-4PNH-NW7X-6RR6-4WUN";
+    let fp = "fp1.bbddccdd11223344556677889900aabbccddeeff00112233445566778899aa";
+    let res = store.activate(fixed_key, fp).unwrap();
+    assert_eq!(res["ok"], true);
+    assert_eq!(res["activated"], true);
+
+    let verify = store.verify(fixed_key, fp).unwrap();
+    assert_eq!(verify["ok"], true);
+}
+
+#[test]
+fn unknown_key_still_rejected() {
+    let db = temp_db();
+    let store = LicenseStore::open(&db).unwrap();
+    let err = store
+        .activate("TOAST-XXXX-XXXX-XXXX-XXXX", "fp1.bbddccdd11223344556677889900aabbccddeeff00112233445566778899aa")
+        .expect_err("случайный ключ не должен активироваться");
+    assert!(err.contains("не найден"), "неожиданная ошибка: {}", err);
+}
+
+#[test]
 fn export_keys_creates_file() {
     let db = temp_db();
     let store = LicenseStore::open(&db).unwrap();
