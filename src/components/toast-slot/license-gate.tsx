@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getMachineFingerprint } from "@/lib/fingerprint";
+import { licenseActivate } from "@/lib/api";
 
 interface LicenseGateProps {
   onUnlocked: (key: string) => void;
-  onOpenAdmin: () => void;
 }
 
-export function LicenseGate({ onUnlocked, onOpenAdmin }: LicenseGateProps) {
+export function LicenseGate({ onUnlocked }: LicenseGateProps) {
   const [key, setKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,26 +30,16 @@ export function LicenseGate({ onUnlocked, onOpenAdmin }: LicenseGateProps) {
     setLoading(true);
     try {
       const fingerprint = await getMachineFingerprint();
-      const res = await fetch("/api/license/activate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key, fingerprint }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        setError(data.error || "Не удалось активировать ключ.");
-        return;
-      }
+      const data = await licenseActivate(key.trim(), fingerprint);
       localStorage.setItem("toastLicenseKey", data.key);
       setSuccess(
         data.activated
           ? "Ключ успешно активирован на этом устройстве!"
           : "Ключ подтверждён. Добро пожаловать!"
       );
-      // brief delay so the user sees the success state
       setTimeout(() => onUnlocked(data.key), 700);
-    } catch {
-      setError("Ошибка соединения с сервером. Попробуйте ещё раз.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Не удалось активировать ключ.");
     } finally {
       setLoading(false);
     }
@@ -97,7 +87,7 @@ export function LicenseGate({ onUnlocked, onOpenAdmin }: LicenseGateProps) {
               </h2>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <div className="space-y-2">
                 <Label htmlFor="license-key" className="text-amber-100">
                   Лицензионный ключ
@@ -161,14 +151,6 @@ export function LicenseGate({ onUnlocked, onOpenAdmin }: LicenseGateProps) {
             </div>
           </div>
 
-          <div className="mt-6 text-center">
-            <button
-              onClick={onOpenAdmin}
-              className="text-xs text-amber-700/60 underline-offset-2 transition hover:text-amber-500 hover:underline"
-            >
-              Панель администратора
-            </button>
-          </div>
         </motion.div>
       </div>
     </div>

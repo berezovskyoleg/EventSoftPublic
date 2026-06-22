@@ -4,15 +4,14 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { LicenseGate } from "@/components/toast-slot/license-gate";
 import { SlotMachine } from "@/components/toast-slot/slot-machine";
-import { AdminPanel } from "@/components/toast-slot/admin-panel";
 import { getMachineFingerprint } from "@/lib/fingerprint";
+import { licenseVerify } from "@/lib/api";
 
 type Status = "loading" | "unlocked" | "locked";
 
 export default function Home() {
   const [status, setStatus] = useState<Status>("loading");
   const [licenseKey, setLicenseKey] = useState<string | null>(null);
-  const [adminOpen, setAdminOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -24,23 +23,17 @@ export default function Home() {
       }
       try {
         const fp = await getMachineFingerprint();
-        const res = await fetch("/api/license/verify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ key: stored, fingerprint: fp }),
-        });
-        const data = await res.json();
-        if (!cancelled && res.ok && data.ok) {
+        const data = await licenseVerify(stored, fp);
+        if (!cancelled && data.ok) {
           setLicenseKey(data.key);
           setStatus("unlocked");
         } else {
-          // key invalid on this machine — clear it
           localStorage.removeItem("toastLicenseKey");
           setStatus("locked");
         }
       } catch {
         if (!cancelled) {
-          // network issue — still allow local use if we had a key? No, require verify.
+          localStorage.removeItem("toastLicenseKey");
           setStatus("locked");
         }
       }
@@ -74,15 +67,7 @@ export default function Home() {
   }
 
   if (status === "locked" || !licenseKey) {
-    return (
-      <>
-        <LicenseGate
-          onUnlocked={handleUnlocked}
-          onOpenAdmin={() => setAdminOpen(true)}
-        />
-        <AdminPanel open={adminOpen} onOpenChange={setAdminOpen} />
-      </>
-    );
+    return <LicenseGate onUnlocked={handleUnlocked} />;
   }
 
   return <SlotMachine licenseKey={licenseKey} onLogout={handleLogout} />;

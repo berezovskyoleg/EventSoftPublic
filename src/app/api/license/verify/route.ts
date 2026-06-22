@@ -1,68 +1,47 @@
-import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { hashFingerprint } from "@/lib/license";
+import { execFileSync } from "child_process";
+import { NextRequest, NextResponse } from "next/server";
+import path from "path";
 
-export const runtime = "nodejs";
-
-interface VerifyBody {
-  key?: string;
-  fingerprint?: string;
+function adminBinaryPath(): string {
+  const bin = process.platform === "win32" ? "admin.exe" : "admin";
+  return path.join(process.cwd(), "src-tauri", "target", "release", bin);
 }
 
-function normalizeKey(raw: string): string {
-  return raw.trim().toUpperCase().replace(/\s+/g, "");
-}
-
-export async function POST(request: Request) {
-  let body: VerifyBody;
+export async function POST(req: NextRequest) {
   try {
-    body = await request.json();
-  } catch {
+    const { key, fingerprint } = (await req.json()) as {
+      key?: string;
+      fingerprint?: string;
+    };
+
+    if (!key || !fingerprint) {
+      return NextResponse.json(
+        { ok: false, error: "Укажите ключ и fingerprint." },
+        { status: 400 }
+      );
+    }
+
+    const admin = adminBinaryPath();
+    const stdout = execFileSync(admin, ["verify", key, fingerprint], {
+      encoding: "utf-8",
+      timeout: 10000,
+    });
+
+    const data = JSON.parse(stdout.trim());
+    return NextResponse.json(data);
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Не удалось верифицировать ключ.";
+    let parsedError: string | undefined;
+    try {
+      const m = message.match(/\{"error":"(.+)"\}/);
+      if (m) parsedError = m[1];
+    } catch {
+      // ignore
+    }
     return NextResponse.json(
-      { ok: false, error: "Неверный формат запроса." },
+      { ok: false, error: parsedError || message },
       { status: 400 }
     );
   }
-
-  const rawKey = body.key ?? "";
-  const rawFp = body.fingerprint ?? "";
-
-  if (!rawKey || !rawFp) {
-    return NextResponse.json(
-      { ok: false, error: "Неверный формат запроса." },
-      { status: 400 }
-    );
-  }
-
-  const normalizedKey = normalizeKey(rawKey);
-  const fpHash = hashFingerprint(rawFp);
-
-  const license = await db.licenseKey.findUnique({
-    where: { key: normalizedKey },
-  });
-
-  if (!license) {
-    return NextResponse.json({ ok: false, error: "Ключ не найден." }, { status: 404 });
-  }
-
-  if (!license.isActive) {
-    return NextResponse.json(
-      { ok: false, error: "Ключ отозван." },
-      { status: 403 }
-    );
-  }
-
-  if (!license.machineFingerprint || license.machineFingerprint !== fpHash) {
-    return NextResponse.json(
-      { ok: false, error: "Ключ не привязан к этому устройству." },
-      { status: 403 }
-    );
-  }
-
-  await db.licenseKey.update({
-    where: { id: license.id },
-    data: { lastVerifiedAt: new Date() },
-  });
-
-  return NextResponse.json({ ok: true, key: license.key });
 }

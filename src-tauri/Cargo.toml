@@ -1,0 +1,36 @@
+[package]
+name = "toast-slot"
+version = "0.2.0"
+description = "Toast Slot Machine — one-armed bandit for choosing toast speakers"
+authors = ["Toast Machine"]
+edition = "2021"
+rust-version = "1.77"
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.0", features = [] }
+tauri-plugin-shell = "2.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rand = "0.8"
+sha2 = "0.10"
+hex = "0.4"
+chrono = "0.4"
+rusqlite = { version = "0.32", features = ["bundled"] }
+dirs = "5"
+once_cell = "1"
+machine-uid = "0.6"
+whoami = "1.5"
+
+[[bin]]
+name = "toast-slot"
+path = "src/main.rs"
+
+[[bin]]
+name = "admin"
+path = "src/bin/admin.rs"
+
+[profile.release]
+opt-level = 2

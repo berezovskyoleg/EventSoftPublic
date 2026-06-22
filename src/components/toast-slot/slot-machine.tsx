@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { getSoundEngine } from "@/lib/sounds";
+import { SoundSettings } from "./sound-settings";
 
 interface SlotMachineProps {
   licenseKey: string;
@@ -283,6 +284,7 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
                 {muted ? "Звук выкл" : "Звук вкл"}
               </span>
             </Button>
+            <SoundSettings />
             <Button
               variant="outline"
               size="sm"

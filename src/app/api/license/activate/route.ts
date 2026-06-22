@@ -1,112 +1,47 @@
-import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { hashFingerprint, createSessionToken } from "@/lib/license";
+import { execFileSync } from "child_process";
+import { NextRequest, NextResponse } from "next/server";
+import path from "path";
 
-export const runtime = "nodejs";
-
-interface ActivateBody {
-  key?: string;
-  fingerprint?: string;
+function adminBinaryPath(): string {
+  const bin = process.platform === "win32" ? "admin.exe" : "admin";
+  return path.join(process.cwd(), "src-tauri", "target", "release", bin);
 }
 
-function normalizeKey(raw: string): string {
-  return raw.trim().toUpperCase().replace(/\s+/g, "");
-}
-
-export async function POST(request: Request) {
-  let body: ActivateBody;
+export async function POST(req: NextRequest) {
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { ok: false, error: "Неверный формат запроса." },
-      { status: 400 }
-    );
-  }
+    const { key, fingerprint } = (await req.json()) as {
+      key?: string;
+      fingerprint?: string;
+    };
 
-  const rawKey = body.key ?? "";
-  const rawFp = body.fingerprint ?? "";
+    if (!key || !fingerprint) {
+      return NextResponse.json(
+        { ok: false, error: "Укажите ключ и fingerprint." },
+        { status: 400 }
+      );
+    }
 
-  if (!rawKey) {
-    return NextResponse.json(
-      { ok: false, error: "Введите лицензионный ключ." },
-      { status: 400 }
-    );
-  }
-  if (!rawFp || rawFp.length < 16) {
-    return NextResponse.json(
-      { ok: false, error: "Не удалось определить устройство." },
-      { status: 400 }
-    );
-  }
-
-  const normalizedKey = normalizeKey(rawKey);
-  const fpHash = hashFingerprint(rawFp);
-
-  const license = await db.licenseKey.findUnique({
-    where: { key: normalizedKey },
-  });
-
-  if (!license) {
-    return NextResponse.json(
-      { ok: false, error: "Лицензионный ключ не найден." },
-      { status: 404 }
-    );
-  }
-
-  if (!license.isActive) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "Этот лицензионный ключ был отозван. Обратитесь к продавцу.",
-      },
-      { status: 403 }
-    );
-  }
-
-  const sessionSecret =
-    process.env.SESSION_SECRET || "toast-slot-machine-session-secret-dev";
-
-  // First activation — bind the key to this machine.
-  if (!license.machineFingerprint) {
-    await db.licenseKey.update({
-      where: { id: license.id },
-      data: {
-        machineFingerprint: fpHash,
-        activatedAt: new Date(),
-        lastVerifiedAt: new Date(),
-      },
+    const admin = adminBinaryPath();
+    const stdout = execFileSync(admin, ["activate", key, fingerprint], {
+      encoding: "utf-8",
+      timeout: 10000,
     });
-    return NextResponse.json({
-      ok: true,
-      activated: true,
-      key: license.key,
-      session: createSessionToken(license.id, sessionSecret),
-    });
-  }
 
-  // Already activated — must be the same machine.
-  if (license.machineFingerprint !== fpHash) {
+    const data = JSON.parse(stdout.trim());
+    return NextResponse.json(data);
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Не удалось активировать ключ.";
+    let parsedError: string | undefined;
+    try {
+      const m = message.match(/\{"error":"(.+)"\}/);
+      if (m) parsedError = m[1];
+    } catch {
+      // ignore
+    }
     return NextResponse.json(
-      {
-        ok: false,
-        error:
-          "Этот ключ уже привязан к другому устройству и не может быть использован здесь.",
-      },
-      { status: 403 }
+      { ok: false, error: parsedError || message },
+      { status: 400 }
     );
   }
-
-  // Same machine — refresh verification timestamp.
-  await db.licenseKey.update({
-    where: { id: license.id },
-    data: { lastVerifiedAt: new Date() },
-  });
-
-  return NextResponse.json({
-    ok: true,
-    activated: false,
-    key: license.key,
-    session: createSessionToken(license.id, sessionSecret),
-  });
 }

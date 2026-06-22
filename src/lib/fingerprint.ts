@@ -1,13 +1,14 @@
 /**
- * Client-side machine fingerprint.
+ * Machine fingerprint used to bind a license key to one device.
  *
- * Combines many stable browser/device signals (canvas, webgl, screen, CPU,
- * timezone, fonts...) into a single SHA-256 hash. The same browser on the
- * same machine produces the same hash reliably, while a different machine
- * (or a sufficiently different browser environment) produces a different one.
+ * Inside the Tauri desktop shell the fingerprint is computed on the Rust side
+ * from the OS machine UID and the current username. It stays the same even
+ * after the app is reinstalled, as long as the OS/user account is the same.
  *
- * This is what binds a license key to "one device".
+ * In a regular browser (dev / web preview) we fall back to browser signals.
  */
+
+import { invoke } from "@tauri-apps/api/core";
 
 async function sha256(text: string): Promise<string> {
   const enc = new TextEncoder().encode(text);
@@ -87,7 +88,19 @@ function audioSignature(): string {
   }
 }
 
+function isTauri(): boolean {
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+}
+
 export async function getMachineFingerprint(): Promise<string> {
+  if (isTauri()) {
+    try {
+      return await invoke<string>("get_machine_fingerprint");
+    } catch {
+      // Fall through to browser-based fingerprint if Rust command fails.
+    }
+  }
+
   const nav = navigator as Navigator & {
     deviceMemory?: number;
     connection?: { effectiveType?: string; downlink?: number };

@@ -16,9 +16,14 @@ node_modules
 # next.js
 /.next/
 /out/
+/dist/
 
 # production
 /build
+
+# tauri
+/src-tauri/target/
+/src-tauri/icons/icon-source.png
 
 # misc
 .DS_Store
@@ -32,6 +37,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+toast-slot-config.toml
 
 # vercel
 .vercel
@@ -52,3 +58,9 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# temporary workspace backups
+workspace-*.tar
+
+# license keys (do not commit to public repos)
+license-keys.txt
