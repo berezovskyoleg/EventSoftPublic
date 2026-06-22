@@ -283,7 +283,7 @@ impl LicenseStore {
 
         let now = Utc::now().to_rfc3339();
         let mut lines = vec![
-            "# Toast Slot Machine — License Keys".to_string(),
+            "# ToastMachine — License Keys".to_string(),
             format!("# Total: {} keys", keys.len()),
             format!("# Available: {}", available),
             format!("# Activated: {}", activated),

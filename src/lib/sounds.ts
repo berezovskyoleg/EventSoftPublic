@@ -1,5 +1,5 @@
 /**
- * Sound engine for the Toast Slot machine.
+ * Sound engine for the ToastMachine.
  *
  * Provides two modes:
  *  1. Built-in synthesized sounds — softer, ear-friendly casino-style SFX.

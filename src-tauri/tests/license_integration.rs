@@ -178,7 +178,7 @@ fn export_keys_creates_file() {
     assert!(out.exists());
 
     let content = std::fs::read_to_string(&out).unwrap();
-    assert!(content.starts_with("# Toast Slot Machine — License Keys"));
+    assert!(content.starts_with("# ToastMachine — License Keys"));
     assert!(content.contains("Total: 100 keys"));
     assert!(content.contains("Available: 100"));
     // 6 header lines + 1 empty line + 100 key lines

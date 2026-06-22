@@ -71,7 +71,7 @@ export function LicenseGate({ onUnlocked }: LicenseGateProps) {
               <Wine className="h-10 w-10 text-[#1a0f0a]" />
             </motion.div>
             <h1 className="bg-gradient-to-b from-amber-200 to-amber-400 bg-clip-text text-3xl font-black tracking-tight text-transparent sm:text-4xl">
-              Тост Слот
+              ToastMachine
             </h1>
             <p className="mt-2 text-sm text-amber-200/70">
               Слот-машина для выбора того, кто произнесёт тост

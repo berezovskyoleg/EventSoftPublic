@@ -1,4 +1,4 @@
-# 🎰 Toast Slot
+# 🎰 ToastMachine
 
 Слот-машина для выбора гостя, который будет произносить тост. Работает офлайн как десктопное приложение на macOS и Windows.
 
@@ -25,8 +25,8 @@ npm run tauri:dev
 ```
 
 Результат:
-- `src-tauri/target/release/bundle/macos/Toast Slot.app`
-- `src-tauri/target/release/bundle/dmg/Toast Slot_*.dmg`
+- `src-tauri/target/release/bundle/macos/ToastMachine.app`
+- `src-tauri/target/release/bundle/dmg/ToastMachine_*.dmg`
 
 ### macOS Universal (Intel + Apple Silicon в одном файле)
 
@@ -35,8 +35,8 @@ npm run tauri:dev
 ```
 
 Результат:
-- `src-tauri/target/universal-apple-darwin/release/bundle/macos/Toast Slot.app`
-- `src-tauri/target/universal-apple-darwin/release/bundle/dmg/Toast Slot_*.dmg`
+- `src-tauri/target/universal-apple-darwin/release/bundle/macos/ToastMachine.app`
+- `src-tauri/target/universal-apple-darwin/release/bundle/dmg/ToastMachine_*.dmg`
 
 ### Windows (x64)
 
@@ -71,7 +71,7 @@ npm run tauri:dev
 
 ## Передача заказчику
 
-Для macOS достаточно передать `.dmg` — заказчик открывает его и перетаскивает `Toast Slot.app` в `Applications`.
+Для macOS достаточно передать `.dmg` — заказчик открывает его и перетаскивает `ToastMachine.app` в `Applications`.
 
 Для Windows передай `.msi` (установщик) или `.exe` (portable-установщик NSIS).
 
@@ -84,8 +84,8 @@ npm run tauri:dev
 ### 1. Файл конфигурации (удобнее для заказчика)
 
 Скопируй `toast-slot-config.example.toml` в `toast-slot-config.toml` и положи рядом с исполняемым файлом:
-- macOS: `Toast Slot.app/Contents/MacOS/toast-slot-config.toml`
-- Windows: рядом с `Toast Slot.exe`
+- macOS: `ToastMachine.app/Contents/MacOS/toast-slot-config.toml`
+- Windows: рядом с `ToastMachine.exe`
 
 ```toml
 session_secret = "my-very-long-random-string"

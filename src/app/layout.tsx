@@ -3,11 +3,11 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: "Тост Слот — выбор тостующегося",
+  title: "ToastMachine — выбор тостующегося",
   description:
     "Слот-машина (однорукий Джек) для случайного выбора гостя, который произнесёт тост. Локальное приложение с лицензионными ключами, привязанными к устройству.",
   keywords: ["тост", "слот", "слот-машина", "игра", "свадьба", "торжество", "лицензия"],
-  authors: [{ name: "Toast Slot" }],
+  authors: [{ name: "ToastMachine" }],
 };
 
 export default function RootLayout({

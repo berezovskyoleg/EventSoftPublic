@@ -262,9 +262,9 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
             </div>
             <div>
               <h1 className="text-xl font-black tracking-tight text-amber-200 sm:text-2xl">
-                Тост Слот
+                ToastMachine
               </h1>
-              <p className="text-[11px] text-amber-200/50">Крутите барабан — выберем тостующегося</p>
+              <p className="text-[11px] text-amber-200/50">Кто следующим говорит тост?</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -404,7 +404,7 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
               <div className="mb-4 text-center">
                 <div className="inline-block rounded-full border border-amber-600/40 bg-amber-950/40 px-5 py-1">
                   <span className="bg-gradient-to-b from-amber-200 to-amber-500 bg-clip-text text-sm font-black uppercase tracking-[0.3em] text-transparent">
-                    Toast Slot
+                    ToastMachine
                   </span>
                 </div>
               </div>
