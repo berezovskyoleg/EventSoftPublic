@@ -1,6 +1,6 @@
 [package]
 name = "toast-slot"
-version = "0.2.0"
+version = "0.2.1"
 description = "Toast Slot Machine — one-armed bandit for choosing toast speakers"
 authors = ["Toast Machine"]
 edition = "2021"

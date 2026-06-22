@@ -39,9 +39,6 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      - name: Build macOS universal bundle
-        run: npm run tauri:build -- --target universal-apple-darwin
-
       - name: Build universal admin CLI
         run: |
           rustup target add x86_64-apple-darwin aarch64-apple-darwin
@@ -52,6 +49,9 @@ jobs:
             src-tauri/target/x86_64-apple-darwin/release/admin \
             src-tauri/target/aarch64-apple-darwin/release/admin \
             -output src-tauri/target/universal-apple-darwin/release/admin
+
+      - name: Build macOS universal bundle
+        run: npm run tauri:build -- --target universal-apple-darwin
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
@@ -91,11 +91,11 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      - name: Build Windows bundle
-        run: npm run tauri:build -- --target ${{ matrix.target }}
-
       - name: Build Windows admin CLI
         run: cargo build --release --manifest-path src-tauri/Cargo.toml --bin admin --target ${{ matrix.target }}
+
+      - name: Build Windows bundle
+        run: npm run tauri:build -- --target ${{ matrix.target }}
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
