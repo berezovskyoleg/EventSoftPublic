@@ -134,8 +134,14 @@ cargo build --release --bin admin
 # Показать все ключи и статус
 ./src-tauri/target/release/admin list
 
-# Экспортировать ключи в файл
+# Экспортировать ключи в файл (с пометками AVAILABLE / SOLD / ACTIVATED / REVOKED)
 ./src-tauri/target/release/admin export license-keys.txt
+
+# Получить первый свободный ключ для продажи
+./src-tauri/target/release/admin available | head -1
+
+# Пометить ключ как проданный (чтобы не выдать его повторно)
+./src-tauri/target/release/admin sell TOAST-XXXX-XXXX-XXXX
 
 # Отозвать (отключить) ключ
 ./src-tauri/target/release/admin disable TOAST-XXXX-XXXX-XXXX
