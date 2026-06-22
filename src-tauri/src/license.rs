@@ -59,11 +59,19 @@ impl LicenseStore {
                 activated_at TEXT,
                 last_verified_at TEXT,
                 is_active INTEGER NOT NULL DEFAULT 1,
+                sold_at TEXT,
                 created_at TEXT NOT NULL DEFAULT (datetime('now'))
             )",
             [],
         )
         .map_err(|e| e.to_string())?;
+
+        // Migrate older databases that don't have the sold_at column yet.
+        let _ = conn.execute(
+            "ALTER TABLE license_keys ADD COLUMN sold_at TEXT",
+            [],
+        );
+
         Ok(())
     }
 
@@ -260,14 +268,21 @@ impl LicenseStore {
         Ok(serde_json::json!({ "ok": true, "key": key }))
     }
 
-    pub fn list_keys(&self) -> Result<Vec<(String, Option<String>, bool)>, String> {
+    pub fn list_keys(
+        &self,
+    ) -> Result<Vec<(String, Option<String>, bool, Option<String>)>, String> {
         let conn = self.conn()?;
         let mut stmt = conn
-            .prepare("SELECT key, machine_fingerprint, is_active FROM license_keys ORDER BY created_at ASC")
+            .prepare("SELECT key, machine_fingerprint, is_active, sold_at FROM license_keys ORDER BY created_at ASC")
             .map_err(|e| e.to_string())?;
         let rows = stmt
             .query_map([], |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?, row.get::<_, i64>(2)? != 0))
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, Option<String>>(1)?,
+                    row.get::<_, i64>(2)? != 0,
+                    row.get::<_, Option<String>>(3)?,
+                ))
             })
             .map_err(|e| e.to_string())?
             .collect::<Result<Vec<_>, _>>()
@@ -330,35 +345,82 @@ impl LicenseStore {
                  SET machine_fingerprint = NULL,
                      activated_at = NULL,
                      last_verified_at = NULL,
-                     is_active = 1",
+                     is_active = 1,
+                     sold_at = NULL",
                 [],
             )
             .map_err(|e| e.to_string())?;
         Ok(updated)
     }
 
+    pub fn sell_key(&self, key: &str) -> Result<(), String> {
+        let key = normalize_key(key);
+        if key.is_empty() {
+            return Err("Укажите ключ.".into());
+        }
+        let conn = self.conn()?;
+        let updated = conn
+            .execute(
+                "UPDATE license_keys
+                 SET sold_at = datetime('now')
+                 WHERE key = ?1 AND sold_at IS NULL",
+                [&key],
+            )
+            .map_err(|e| e.to_string())?;
+        if updated == 0 {
+            return Err("Ключ не найден или уже продан/зарезервирован.".into());
+        }
+        Ok(())
+    }
+
+    pub fn list_available_keys(&self) -> Result<Vec<String>, String> {
+        let conn = self.conn()?;
+        let mut stmt = conn
+            .prepare(
+                "SELECT key FROM license_keys
+                 WHERE is_active = 1
+                   AND machine_fingerprint IS NULL
+                   AND sold_at IS NULL
+                 ORDER BY created_at ASC",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| row.get::<_, String>(0))
+            .map_err(|e| e.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?;
+        Ok(rows)
+    }
+
     pub fn export_keys(&self, out_path: &Path) -> Result<usize, String> {
         let keys = self.list_keys()?;
-        let available = keys.iter().filter(|(_, fp, active)| fp.is_none() && *active).count();
-        let activated = keys.iter().filter(|(_, fp, _)| fp.is_some()).count();
-        let revoked = keys.iter().filter(|(_, _, active)| !active).count();
+        let available = keys
+            .iter()
+            .filter(|(_, fp, active, sold)| fp.is_none() && *active && sold.is_none())
+            .count();
+        let sold = keys.iter().filter(|(_, _, _, sold)| sold.is_some()).count();
+        let activated = keys.iter().filter(|(_, fp, _, _)| fp.is_some()).count();
+        let revoked = keys.iter().filter(|(_, _, active, _)| !active).count();
 
         let now = Utc::now().to_rfc3339();
         let mut lines = vec![
             "# ToastMachine — License Keys".to_string(),
             format!("# Total: {} keys", keys.len()),
             format!("# Available: {}", available),
+            format!("# Sold: {}", sold),
             format!("# Activated: {}", activated),
             format!("# Revoked: {}", revoked),
             format!("# Generated: {}", now),
             String::new(),
         ];
 
-        for (i, (key, fp, active)) in keys.iter().enumerate() {
+        for (i, (key, fp, active, sold)) in keys.iter().enumerate() {
             let status = if !active {
                 "REVOKED"
             } else if fp.is_some() {
                 "ACTIVATED"
+            } else if sold.is_some() {
+                "SOLD"
             } else {
                 "AVAILABLE"
             };

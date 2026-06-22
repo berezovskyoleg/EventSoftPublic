@@ -30,6 +30,8 @@ fn print_usage() {
         "Использование:
   admin list [путь_к_бд]
   admin export <файл> [путь_к_бд]
+  admin available [путь_к_бд]
+  admin sell <ключ> [путь_к_бд]
   admin fingerprint
   admin activate <ключ> <fingerprint> [путь_к_бд]
   admin verify <ключ> <fingerprint> [путь_к_бд]
@@ -38,9 +40,10 @@ fn print_usage() {
   admin reset <ключ> [путь_к_бд]
   admin reset-all [путь_к_бд]
 
-activate / verify — JSON-вывод для локального веб-тестирования.
-reset             — сбросить привязку к устройству, чтобы ключ можно было активировать снова.
-reset-all         — сбросить привязку для всех ключей (полезно при тестировании).
+sell      — пометить ключ как проданный (чтобы не выдать его повторно).
+available — показать ключи, которые ещё можно продать.
+reset     — сбросить привязку к устройству, чтобы ключ можно было активировать снова.
+reset-all — сбросить привязку для всех ключей (полезно при тестировании).
 
 Если путь к БД не указан, используется стандартная папка приложения."
     );
@@ -73,16 +76,42 @@ fn main() {
                 eprintln!("Ошибка чтения ключей: {}", e);
                 std::process::exit(1);
             });
-            println!("{:<30} {:<12} {}", "КЛЮЧ", "АКТИВИРОВАН", "ДЕЙСТВУЕТ");
-            for (key, fp, active) in keys {
+            println!(
+                "{:<30} {:<12} {:<10} {}",
+                "КЛЮЧ", "АКТИВИРОВАН", "ПРОДАН", "ДЕЙСТВУЕТ"
+            );
+            for (key, fp, active, sold) in keys {
                 println!(
-                    "{:<30} {:<12} {}",
+                    "{:<30} {:<12} {:<10} {}",
                     key,
                     if fp.is_some() { "да" } else { "нет" },
+                    if sold.is_some() { "да" } else { "нет" },
                     if active { "да" } else { "нет" }
                 );
             }
-        }
+        },
+        "available" => {
+            let keys = store.list_available_keys().unwrap_or_else(|e| {
+                eprintln!("Ошибка чтения ключей: {}", e);
+                std::process::exit(1);
+            });
+            println!("Доступно для продажи: {}", keys.len());
+            for key in keys {
+                println!("{}", key);
+            }
+        },
+        "sell" => {
+            if args.len() < 3 {
+                print_usage();
+                std::process::exit(1);
+            }
+            let key_arg = &args[2];
+            store.sell_key(key_arg).unwrap_or_else(|e| {
+                eprintln!("Ошибка пометки ключа: {}", e);
+                std::process::exit(1);
+            });
+            println!("Ключ {} помечен как проданный.", key_arg);
+        },
         "export" => {
             if args.len() < 3 {
                 print_usage();
@@ -94,10 +123,10 @@ fn main() {
                 std::process::exit(1);
             });
             println!("Экспортировано {} ключей в '{}'.", count, out.display());
-        }
+        },
         "fingerprint" => {
             println!("{}", compute_machine_fingerprint());
-        }
+        },
         "activate" => {
             if args.len() < 4 {
                 print_usage();
@@ -112,7 +141,7 @@ fn main() {
                     std::process::exit(1);
                 }
             }
-        }
+        },
         "verify" => {
             if args.len() < 4 {
                 print_usage();
@@ -127,7 +156,7 @@ fn main() {
                     std::process::exit(1);
                 }
             }
-        }
+        },
         "disable" | "enable" => {
             if args.len() < 3 {
                 print_usage();
@@ -144,7 +173,7 @@ fn main() {
                 key_arg,
                 if active { "активирован" } else { "отключён" }
             );
-        }
+        },
         "reset" => {
             if args.len() < 3 {
                 print_usage();
@@ -156,7 +185,7 @@ fn main() {
                 std::process::exit(1);
             });
             println!("Ключ {} сброшен. Теперь его можно активировать заново.", key_arg);
-        }
+        },
         "reset-all" => {
             let count = store.reset_all_keys().unwrap_or_else(|e| {
                 eprintln!("Ошибка сброса ключей: {}", e);

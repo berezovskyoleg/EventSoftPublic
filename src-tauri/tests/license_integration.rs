@@ -42,7 +42,7 @@ fn keys_are_generated_on_open() {
     let store = LicenseStore::open(&db).unwrap();
     let keys = store.list_keys().unwrap();
     assert_eq!(keys.len(), 100, "в базе должно быть 100 ключей");
-    for (_, _, active) in &keys {
+    for (_, _, active, _) in &keys {
         assert!(*active, "все ключи должны быть активны по умолчанию");
     }
 }
@@ -144,9 +144,10 @@ fn reset_all_keys_clears_all_bindings() {
     assert_eq!(count, 100);
 
     let refreshed = store.list_keys().unwrap();
-    for (_, fp, active) in refreshed {
+    for (_, fp, active, sold) in refreshed {
         assert!(fp.is_none());
         assert!(active);
+        assert!(sold.is_none());
     }
 }
 
@@ -201,6 +202,33 @@ fn unknown_key_still_rejected() {
 }
 
 #[test]
+fn sell_key_marks_it_as_sold() {
+    let db = temp_db();
+    let store = LicenseStore::open(&db).unwrap();
+    let key = first_key(&store);
+
+    store.sell_key(&key).unwrap();
+
+    let available = store.list_available_keys().unwrap();
+    assert!(!available.contains(&key));
+
+    let keys = store.list_keys().unwrap();
+    let row = keys.iter().find(|(k, _, _, _)| k == &key).unwrap();
+    assert!(row.3.is_some());
+}
+
+#[test]
+fn sold_key_cannot_be_sold_again() {
+    let db = temp_db();
+    let store = LicenseStore::open(&db).unwrap();
+    let key = first_key(&store);
+
+    store.sell_key(&key).unwrap();
+    let err = store.sell_key(&key).expect_err("повторная продажа должна быть запрещена");
+    assert!(err.contains("уже продан"), "неожиданная ошибка: {}", err);
+}
+
+#[test]
 fn export_keys_creates_file() {
     let db = temp_db();
     let store = LicenseStore::open(&db).unwrap();
@@ -214,6 +242,7 @@ fn export_keys_creates_file() {
     assert!(content.starts_with("# ToastMachine — License Keys"));
     assert!(content.contains("Total: 100 keys"));
     assert!(content.contains("Available: 100"));
-    // 6 header lines + 1 empty line + 100 key lines
-    assert_eq!(content.lines().count(), 107);
+    assert!(content.contains("Sold: 0"));
+    // 7 header lines + 1 empty line + 100 key lines
+    assert_eq!(content.lines().count(), 108);
 }
