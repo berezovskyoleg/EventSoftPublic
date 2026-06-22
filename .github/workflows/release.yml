@@ -126,6 +126,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.version || github.ref_name }}
-          name: Toast Slot ${{ github.event.inputs.version || github.ref_name }}
+          name: ToastMachine ${{ github.event.inputs.version || github.ref_name }}
           files: artifacts/**/*
           generate_release_notes: true

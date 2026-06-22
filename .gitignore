@@ -64,3 +64,6 @@ workspace-*.tar
 
 # license keys (do not commit to public repos)
 license-keys.txt
+
+# local release downloads
+releases/
