@@ -43,9 +43,5 @@ uuid = { version = "1.9", features = ["v4", "serde"] }
 name = "musicbingo"
 path = "src/main.rs"
 
-[[bin]]
-name = "admin"
-path = "src/bin/admin.rs"
-
 [profile.release]
 opt-level = 2
