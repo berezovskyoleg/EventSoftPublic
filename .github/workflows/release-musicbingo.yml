@@ -17,25 +17,13 @@ env:
 
 jobs:
   build-macos:
-    runs-on: macos-latest
+    runs-on: self-hosted
     defaults:
       run:
         working-directory: apps/musicbingo
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: ./package-lock.json
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-apple-darwin,aarch64-apple-darwin
 
       - name: Install frontend dependencies
         run: npm install
@@ -83,7 +71,7 @@ jobs:
 
   release:
     needs: [build-macos, build-windows]
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: startsWith(github.ref, 'refs/tags/musicbingo-v') || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
@@ -107,7 +95,7 @@ jobs:
 
   deploy-site:
     needs: release
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: startsWith(github.ref, 'refs/tags/musicbingo-v') || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout
