@@ -67,3 +67,8 @@ license-keys.txt
 
 # local release downloads
 releases/
+
+# license signing keys (private key must stay secret)
+license_private.pem
+license_private_base64.txt
+license_public.pem

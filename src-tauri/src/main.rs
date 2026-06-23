@@ -1,13 +1,14 @@
-mod license;
+mod online_license;
 
-use license::LicenseStore;
+use online_license::{activate, clear_license, verify};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{Manager, State};
 
 struct AppState {
-    store: Mutex<LicenseStore>,
+    app_data_dir: Mutex<PathBuf>,
 }
 
 #[tauri::command]
@@ -16,18 +17,20 @@ fn license_activate(
     key: String,
     fingerprint: String,
 ) -> Result<Value, String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
-    store.activate(&key, &fingerprint)
+    let dir = state.app_data_dir.lock().map_err(|e| e.to_string())?;
+    activate(&dir, &key, &fingerprint)
 }
 
 #[tauri::command]
-fn license_verify(
-    state: State<'_, AppState>,
-    key: String,
-    fingerprint: String,
-) -> Result<Value, String> {
-    let store = state.store.lock().map_err(|e| e.to_string())?;
-    store.verify(&key, &fingerprint)
+fn license_verify(state: State<'_, AppState>, fingerprint: String) -> Result<Value, String> {
+    let dir = state.app_data_dir.lock().map_err(|e| e.to_string())?;
+    verify(&dir, &fingerprint)
+}
+
+#[tauri::command]
+fn license_logout(state: State<'_, AppState>) -> Result<(), String> {
+    let dir = state.app_data_dir.lock().map_err(|e| e.to_string())?;
+    clear_license(&dir)
 }
 
 #[tauri::command]
@@ -46,15 +49,15 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-            let store = LicenseStore::new(&app_data_dir)?;
             app.manage(AppState {
-                store: Mutex::new(store),
+                app_data_dir: Mutex::new(app_data_dir),
             });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             license_activate,
             license_verify,
+            license_logout,
             get_machine_fingerprint,
         ])
         .run(tauri::generate_context!())

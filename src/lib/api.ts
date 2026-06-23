@@ -1,9 +1,9 @@
 /**
- * API adapter that works both in a browser (dev / standalone web server)
- * and inside the Tauri desktop shell.
+ * License API adapter.
  *
- * In Tauri the backend is handled by Rust commands; in a browser we fall back
- * to the Next.js API routes.
+ * In the Tauri desktop shell the backend talks directly to the online license
+ * server and stores a signed offline token locally.
+ * In a regular browser we fall back to the remote server API.
  */
 
 import { invoke } from "@tauri-apps/api/core";
@@ -32,10 +32,10 @@ export async function licenseActivate(
   if (isTauri()) {
     return invoke<ActivateResponse>("license_activate", { key, fingerprint });
   }
-  const res = await fetch("/api/license/activate", {
+  const res = await fetch("https://soft.eventhunt.ru/api/license/activate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key, fingerprint }),
+    body: JSON.stringify({ key, fingerprint, app: "toastmachine" }),
   });
   const data = (await res.json()) as ActivateResponse;
   if (!res.ok || !data.ok) {
@@ -45,20 +45,25 @@ export async function licenseActivate(
 }
 
 export async function licenseVerify(
-  key: string,
   fingerprint: string
 ): Promise<VerifyResponse> {
   if (isTauri()) {
-    return invoke<VerifyResponse>("license_verify", { key, fingerprint });
+    return invoke<VerifyResponse>("license_verify", { fingerprint });
   }
-  const res = await fetch("/api/license/verify", {
+  const res = await fetch("https://soft.eventhunt.ru/api/license/verify", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ key, fingerprint }),
+    body: JSON.stringify({ fingerprint, app: "toastmachine" }),
   });
   const data = (await res.json()) as VerifyResponse;
   if (!res.ok || !data.ok) {
     throw new Error(data.error || "Ключ недействителен на этом устройстве.");
   }
   return data;
+}
+
+export async function licenseLogout(): Promise<void> {
+  if (isTauri()) {
+    await invoke("license_logout");
+  }
 }

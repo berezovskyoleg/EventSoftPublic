@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 import { LicenseGate } from "@/components/toast-slot/license-gate";
 import { SlotMachine } from "@/components/toast-slot/slot-machine";
 import { getMachineFingerprint } from "@/lib/fingerprint";
-import { licenseVerify } from "@/lib/api";
+import { licenseLogout, licenseVerify } from "@/lib/api";
 
 type Status = "loading" | "unlocked" | "locked";
 
@@ -16,24 +16,17 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     async function check() {
-      const stored = localStorage.getItem("toastLicenseKey");
-      if (!stored) {
-        setStatus("locked");
-        return;
-      }
       try {
         const fp = await getMachineFingerprint();
-        const data = await licenseVerify(stored, fp);
+        const data = await licenseVerify(fp);
         if (!cancelled && data.ok) {
           setLicenseKey(data.key);
           setStatus("unlocked");
         } else {
-          localStorage.removeItem("toastLicenseKey");
           setStatus("locked");
         }
       } catch {
         if (!cancelled) {
-          localStorage.removeItem("toastLicenseKey");
           setStatus("locked");
         }
       }
@@ -49,7 +42,12 @@ export default function Home() {
     setStatus("unlocked");
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    try {
+      await licenseLogout();
+    } catch {
+      // ignore cleanup errors
+    }
     localStorage.removeItem("toastLicenseKey");
     setLicenseKey(null);
     setStatus("locked");

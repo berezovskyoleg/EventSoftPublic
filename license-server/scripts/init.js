@@ -32,14 +32,18 @@ function seedToastMachineKeys() {
     return;
   }
 
-  const keysFile = path.join(__dirname, "..", "..", "src-tauri", "keys.txt");
+  const keysFile = path.join(__dirname, "..", "keys.txt");
+  const fallbackKeysFile = path.join(__dirname, "..", "..", "src-tauri", "keys.txt");
   let keys = [];
-  if (fs.existsSync(keysFile)) {
-    keys = fs
-      .readFileSync(keysFile, "utf-8")
-      .split("\n")
-      .map((s) => s.trim().toUpperCase())
-      .filter((s) => s.length > 0);
+  for (const file of [keysFile, fallbackKeysFile]) {
+    if (fs.existsSync(file)) {
+      keys = fs
+        .readFileSync(file, "utf-8")
+        .split("\n")
+        .map((s) => s.trim().toUpperCase())
+        .filter((s) => s.length > 0);
+      if (keys.length > 0) break;
+    }
   }
 
   if (keys.length === 0) {

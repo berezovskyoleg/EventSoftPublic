@@ -23,6 +23,8 @@ dirs = "5"
 once_cell = "1"
 machine-uid = "0.6"
 whoami = "1.5"
+ureq = { version = "2", features = ["json"] }
+jsonwebtoken = "9"
 
 [[bin]]
 name = "toast-slot"
