@@ -626,7 +626,7 @@ function WinnerOverlay({
           {winner}
         </motion.h2>
         <p className="mt-3 text-base text-amber-200/70">
-          Прошу к слову!
+          Вам слово!
         </p>
 
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
