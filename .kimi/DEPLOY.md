@@ -4,15 +4,14 @@
 
 - **Хост:** `soft.eventhunt.ru` (`185.255.133.210`)
 - **Пользователь:** `root`
-- **Пароль:** спросить у Олега (не хранится в репозитории)
+- **SSH-ключ:** `~/.ssh/eventhuntssh` (уже добавлен в `/root/.ssh/authorized_keys`)
 - **SSH-команда:**
   ```bash
-  ssh root@soft.eventhunt.ru
+  ssh -i ~/.ssh/eventhuntssh root@soft.eventhunt.ru
   ```
-  Если используется `sshpass`:
-  ```bash
-  sshpass -p 'ПАРОЛЬ' ssh -o StrictHostKeyChecking=no root@soft.eventhunt.ru
-  ```
+  Если ключ не работает, спросить пароль у Олега.
+
+> На сервере нет `rsync`, поэтому используем `scp`.
 
 ## Что нужно обновить
 
@@ -54,16 +53,16 @@
 
 5. **Залить на сервер**:
    ```bash
-   # Сайт (HTML/CSS/JS)
-   rsync -avz --delete license-server/public/ root@soft.eventhunt.ru:/opt/eventhunt-license-server/public/
+   # Релизы (DMG/MSI/EXE)
+   scp -i ~/.ssh/eventhuntssh license-server/releases/* root@soft.eventhunt.ru:/opt/eventhunt-license-server/releases/
 
-   # Релизы (DMG/MSI)
-   rsync -avz license-server/releases/ root@soft.eventhunt.ru:/opt/eventhunt-license-server/releases/
+   # Сайт (HTML/CSS/JS)
+   scp -r -i ~/.ssh/eventhuntssh license-server/public/* root@soft.eventhunt.ru:/opt/eventhunt-license-server/public/
    ```
 
 6. **Перезапустить сервис** (если обновлялся код сервера):
    ```bash
-   ssh root@soft.eventhunt.ru "cd /opt/eventhunt-license-server && docker compose restart"
+   ssh -i ~/.ssh/eventhuntssh root@soft.eventhunt.ru "cd /opt/eventhunt-license-server && docker compose restart"
    ```
 
 7. **Проверить**:
