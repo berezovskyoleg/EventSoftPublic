@@ -27,6 +27,17 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Build universal admin CLI
+        run: |
+          rustup target add x86_64-apple-darwin aarch64-apple-darwin
+          cargo build --release --manifest-path src-tauri/Cargo.toml --bin admin --target x86_64-apple-darwin
+          cargo build --release --manifest-path src-tauri/Cargo.toml --bin admin --target aarch64-apple-darwin
+          mkdir -p src-tauri/target/universal-apple-darwin/release
+          lipo -create \
+            src-tauri/target/x86_64-apple-darwin/release/admin \
+            src-tauri/target/aarch64-apple-darwin/release/admin \
+            -output src-tauri/target/universal-apple-darwin/release/admin
+
       - name: Build macOS universal bundle
         run: npm run tauri:build -- --target universal-apple-darwin
 
