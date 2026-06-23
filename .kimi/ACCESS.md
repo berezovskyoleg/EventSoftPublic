@@ -25,11 +25,12 @@
 
 ## GitHub-токен
 
-Если нужен API-доступ, токен хранится в macOS Keychain для `https://github.com`.
-Получить можно через:
-```bash
-echo 'url=https://github.com/berezovskyoleg/EventSoft' | git credential fill
-```
+- Fine-grained PAT для API-доступа к репозиторию хранится в `.kimi/SECRETS.md`.
+- Если токен протух — создать новый на https://github.com/settings/tokens?type=beta и обновить `.kimi/SECRETS.md`.
+- Fallback (только если работает Keychain):
+  ```bash
+  echo 'url=https://github.com/berezovskyoleg/EventSoft' | git credential fill
+  ```
 
 ## Пароль от сервера
 
