@@ -1,4 +1,4 @@
-# Деплой ToastMachine на soft.eventhunt.ru
+# Деплой приложений на soft.eventhunt.ru
 
 ## Доступ к серверу
 
@@ -13,82 +13,90 @@
 
 > На сервере нет `rsync`, поэтому используем `scp`.
 
-## Что нужно обновить
+## Структура на сервере
 
-На сервере приложение и сайт работают через `license-server`:
+- `/opt/eventhunt-license-server/` — рабочая копия license-server и сайта.
+- `/opt/eventhunt-license-server/releases/<app>/` — файлы для скачивания (`*.dmg`, `*.msi`, `*.exe`).
+- `/opt/eventhunt-license-server/public/<app>/` — лендинги приложений.
+- Nginx отдаёт `/releases/` и `/musicbingo/` напрямую, остальное проксирует на Node.js-сервер.
 
-- `/opt/eventhunt-license-server/` — рабочая копия сервера и сайта.
-- `/opt/eventhunt-license-server/releases/` — директория с файлами для скачивания (`*.dmg`, `*.msi`, `*.exe`).
-- Nginx отдаёт `/releases/` напрямую, а всё остальное проксирует на Node.js-сервер.
+## ToastMachine
 
-## Порядок деплоя новой версии
+### Порядок деплоя новой версии
 
 1. **Бамп версии** в:
    - `apps/toastmachine/package.json`
    - `apps/toastmachine/src-tauri/Cargo.toml`
    - `apps/toastmachine/src-tauri/tauri.conf.json`
 
-2. **Собрать macOS-версию локально** (universal DMG):
+2. **Запушить тег**:
    ```bash
-   cd apps/toastmachine
-   ./scripts/build-macos-universal.sh
-   ```
-   Результат: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/ToastMachine_*.dmg`
-
-3. **Собрать Windows-версию** через GitHub Actions:
-   - Запушить тег:
-     ```bash
-     git tag v0.2.6
-     git push origin v0.2.6
-     ```
-   - Дождаться завершения `.github/workflows/release.yml`.
-   - Скачать артефакты Windows (`*.msi` и/или `*.exe`) из GitHub Release.
-
-4. **Подготовить релизы локально**:
-   ```bash
-   mkdir -p license-server/releases
-   cp apps/toastmachine/src-tauri/target/universal-apple-darwin/release/bundle/dmg/ToastMachine_*.dmg license-server/releases/
-   cp /path/to/downloaded/ToastMachine_*.msi license-server/releases/
+   git tag v0.2.7
+   git push origin v0.2.7
    ```
 
-5. **Залить на сервер**:
-   ```bash
-   # Релизы (DMG/MSI/EXE)
-   scp -i ~/.ssh/eventhuntssh license-server/releases/* root@soft.eventhunt.ru:/opt/eventhunt-license-server/releases/
+3. Дождаться `.github/workflows/release.yml`.
 
-   # Сайт (HTML/CSS/JS)
-   scp -r -i ~/.ssh/eventhuntssh license-server/public/* root@soft.eventhunt.ru:/opt/eventhunt-license-server/public/
+4. **Залить артефакты на сервер** (если CI deploy-site не настроен):
+   ```bash
+   scp -i ~/.ssh/eventhuntssh apps/toastmachine/src-tauri/target/universal-apple-darwin/release/bundle/dmg/ToastMachine_*.dmg root@soft.eventhunt.ru:/opt/eventhunt-license-server/releases/toastmachine/
+   scp -i ~/.ssh/eventhuntssh apps/toastmachine/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/ToastMachine_*.msi root@soft.eventhunt.ru:/opt/eventhunt-license-server/releases/toastmachine/
    ```
 
-6. **Перезапустить сервис** (если обновлялся код сервера):
+## MusicBingo
+
+### Порядок деплоя новой версии
+
+1. **Бамп версии** в:
+   - `apps/musicbingo/package.json`
+   - `apps/musicbingo/src-tauri/Cargo.toml`
+   - `apps/musicbingo/src-tauri/tauri.conf.json`
+
+2. **Запушить тег**:
    ```bash
-   ssh -i ~/.ssh/eventhuntssh root@soft.eventhunt.ru "cd /opt/eventhunt-license-server && docker compose restart"
+   git tag musicbingo-v0.1.1
+   git push origin musicbingo-v0.1.1
    ```
 
-7. **Проверить**:
-   - Открыть https://soft.eventhunt.ru/toastmachine
-   - Убедиться, что кнопки скачивания активны и ведут на `/releases/ToastMachine_*`
+3. Дождаться `.github/workflows/release-musicbingo.yml`.
+   - Если секрет `EVENTHUNT_SSH_KEY` не настроен, этап `deploy-site` упадёт. Тогда скачать DMG/MSI/EXE из GitHub Release вручную.
 
-## Именование файлов
+4. **Залить артефакты на сервер**:
+   ```bash
+   scp -i ~/.ssh/eventhuntssh MusicBingo_*.dmg root@soft.eventhunt.ru:/opt/eventhunt-license-server/releases/musicbingo/
+   scp -i ~/.ssh/eventhuntssh MusicBingo_*.msi root@soft.eventhunt.ru:/opt/eventhunt-license-server/releases/musicbingo/
+   scp -i ~/.ssh/eventhuntssh MusicBingo_*.exe root@soft.eventhunt.ru:/opt/eventhunt-license-server/releases/musicbingo/
+   ```
 
-Файлы релизов должны содержать версию, например:
-- `ToastMachine_0.2.6_x64.dmg`
-- `ToastMachine_0.2.6_x64-setup.exe`
+5. **Обновить лендинг** при необходимости:
+   ```bash
+   scp -r -i ~/.ssh/eventhuntssh apps/musicbingo/public/musicbingo root@soft.eventhunt.ru:/opt/eventhunt-license-server/public/
+   ```
 
-API `/api/releases/latest` берёт последний `.dmg` и последний `.msi`/`.exe` из `releases/`.
+## Перезапуск license-server
 
-## Быстрая проверка API
+Если обновлялся код сервера:
 
 ```bash
-curl -s https://soft.eventhunt.ru/api/releases/latest | jq
+ssh -i ~/.ssh/eventhuntssh root@soft.eventhunt.ru "docker restart eventhunt-license-server"
+```
+
+## Проверка
+
+```bash
+# ToastMachine
+curl -s 'https://soft.eventhunt.ru/api/releases/latest?app=toastmachine' | jq
+
+# MusicBingo
+curl -s 'https://soft.eventhunt.ru/api/releases/latest?app=musicbingo' | jq
 ```
 
 Ожидаемый ответ:
 ```json
 {
   "ok": true,
-  "version": "0.2.6",
-  "macos": "/releases/ToastMachine_0.2.6_x64.dmg",
-  "windows": "/releases/ToastMachine_0.2.6_x64-setup.exe"
+  "version": "0.1.0",
+  "macos": "/releases/musicbingo/MusicBingo_0.1.0_universal.dmg",
+  "windows": "/releases/musicbingo/MusicBingo_0.1.0_x64_en-US.msi"
 }
 ```
