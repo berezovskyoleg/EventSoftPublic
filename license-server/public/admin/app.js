@@ -8,6 +8,9 @@ const state = {
   stats: [],
   filter: "",
   statusFilter: "",
+  view: "keys",
+  feedback: [],
+  unreadFeedback: 0,
 };
 
 const appEl = document.getElementById("app");
@@ -136,6 +139,22 @@ async function generateKeys() {
   }
 }
 
+async function loadFeedback() {
+  const data = await api("GET", "/admin/feedback");
+  if (data && data.ok) {
+    state.feedback = data.feedback;
+    state.unreadFeedback = data.unread;
+    if (state.view === "feedback") renderFeedback();
+    else renderDashboard();
+  }
+}
+
+async function markFeedbackRead(id) {
+  const data = await api("POST", `/admin/feedback/${id}/read`);
+  if (data && data.ok) loadFeedback();
+  else alert(data?.error || "Ошибка");
+}
+
 function getStatsMap() {
   const map = { available: 0, sold: 0, activated: 0, revoked: 0 };
   for (const s of state.stats) map[s.status] = s.count;
@@ -154,7 +173,13 @@ function renderDashboard() {
         <h1 class="text-2xl font-black text-amber-400">License Admin</h1>
         <p class="text-slate-400 text-sm">Управление лицензионными ключами</p>
       </div>
-      <button id="logoutBtn" class="text-sm text-slate-400 hover:text-white">Выйти</button>
+      <div class="flex items-center gap-3">
+        <button id="feedbackBtn" class="relative text-sm text-slate-400 hover:text-white">
+          Сообщения
+          ${state.unreadFeedback > 0 ? `<span class="absolute -top-2 -right-3 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">${state.unreadFeedback}</span>` : ""}
+        </button>
+        <button id="logoutBtn" class="text-sm text-slate-400 hover:text-white">Выйти</button>
+      </div>
     </div>
 
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
@@ -242,6 +267,10 @@ function renderDashboard() {
     localStorage.removeItem("admin_token");
     renderLogin();
   });
+  document.getElementById("feedbackBtn").addEventListener("click", () => {
+    state.view = "feedback";
+    loadFeedback();
+  });
   document.getElementById("appSelect").addEventListener("change", (e) => {
     state.currentApp = e.target.value;
     loadKeys();
@@ -264,6 +293,77 @@ function renderDashboard() {
   appEl.querySelectorAll("[data-reset]").forEach((btn) =>
     btn.addEventListener("click", () => resetKey(btn.dataset.reset))
   );
+}
+
+function renderFeedback() {
+  appEl.innerHTML = `
+    <div class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+        <h1 class="text-2xl font-black text-amber-400">License Admin</h1>
+        <p class="text-slate-400 text-sm">Сообщения пользователей</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="keysBtn" class="text-sm text-slate-400 hover:text-white">Ключи</button>
+        <button id="logoutBtn" class="text-sm text-slate-400 hover:text-white">Выйти</button>
+      </div>
+    </div>
+
+    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-950 text-slate-400">
+          <tr>
+            <th class="text-left px-4 py-3 font-medium w-12"></th>
+            <th class="text-left px-4 py-3 font-medium">Имя / Контакт</th>
+            <th class="text-left px-4 py-3 font-medium">Сообщение</th>
+            <th class="text-left px-4 py-3 font-medium">Дата</th>
+            <th class="text-right px-4 py-3 font-medium">Действие</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          ${state.feedback.length === 0 ? '<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">Нет сообщений</td></tr>' : ""}
+          ${state.feedback
+            .map(
+              (f) => `
+            <tr class="hover:bg-slate-800/50 ${f.read ? "" : "bg-slate-800/30"}">
+              <td class="px-4 py-3">
+                ${f.read ? "" : '<span class="inline-block w-2 h-2 rounded-full bg-red-500"></span>'}
+              </td>
+              <td class="px-4 py-3">
+                <div class="font-medium text-slate-200">${escapeHtml(f.name)}</div>
+                ${f.contact ? `<div class="text-xs text-slate-400">${escapeHtml(f.contact)}</div>` : ""}
+              </td>
+              <td class="px-4 py-3 text-slate-300 whitespace-pre-wrap">${escapeHtml(f.message)}</td>
+              <td class="px-4 py-3 text-slate-400 text-xs">${formatDate(f.created_at)}</td>
+              <td class="px-4 py-3 text-right">
+                ${f.read ? '<span class="text-slate-500 text-xs">Прочитано</span>' : `<button data-read="${f.id}" class="text-emerald-400 hover:text-emerald-300 font-medium text-xs">Отметить прочитанным</button>`}
+              </td>
+            </tr>
+          `
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  document.getElementById("logoutBtn").addEventListener("click", () => {
+    state.token = null;
+    localStorage.removeItem("admin_token");
+    renderLogin();
+  });
+  document.getElementById("keysBtn").addEventListener("click", () => {
+    state.view = "keys";
+    loadKeys();
+  });
+  appEl.querySelectorAll("[data-read]").forEach((btn) =>
+    btn.addEventListener("click", () => markFeedbackRead(btn.dataset.read))
+  );
+}
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 function statusClass(status) {
@@ -298,6 +398,7 @@ async function init() {
     state.currentApp = state.apps[0].slug;
   }
   await loadKeys();
+  await loadFeedback();
 }
 
 init();

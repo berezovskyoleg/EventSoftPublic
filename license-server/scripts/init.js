@@ -83,7 +83,22 @@ function seedAdmin() {
   );
 }
 
+function ensureFeedbackTable() {
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS feedback (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      contact TEXT,
+      message TEXT NOT NULL,
+      app_slug TEXT,
+      read INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `).run();
+}
+
 seedApps();
 seedToastMachineKeys();
 seedAdmin();
+ensureFeedbackTable();
 console.log("Initialization complete.");

@@ -9,6 +9,7 @@ services:
       - "127.0.0.1:3002:3000"
     volumes:
       - ./data:/app/data
+      - ./releases:/app/releases
     environment:
       - NODE_ENV=production
       - PORT=3000

@@ -184,4 +184,32 @@ router.post("/keys/generate", authMiddleware, (req, res) => {
   }
 });
 
+// GET /api/admin/feedback
+router.get("/feedback", authMiddleware, (req, res) => {
+  try {
+    const feedback = db
+      .prepare("SELECT * FROM feedback ORDER BY created_at DESC, id DESC")
+      .all();
+    const unread = db
+      .prepare("SELECT COUNT(*) as count FROM feedback WHERE read = 0")
+      .get().count;
+    return res.json({ ok: true, feedback, unread });
+  } catch (err) {
+    console.error("feedback list error", err);
+    return res.status(500).json({ ok: false, error: "Server error" });
+  }
+});
+
+// POST /api/admin/feedback/:id/read
+router.post("/feedback/:id/read", authMiddleware, (req, res) => {
+  try {
+    const { id } = req.params;
+    db.prepare("UPDATE feedback SET read = 1 WHERE id = ?").run(id);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error("feedback read error", err);
+    return res.status(500).json({ ok: false, error: "Server error" });
+  }
+});
+
 module.exports = router;
