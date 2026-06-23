@@ -32,8 +32,8 @@ function seedToastMachineKeys() {
     return;
   }
 
-  const keysFile = path.join(__dirname, "..", "keys.txt");
-  const fallbackKeysFile = path.join(__dirname, "..", "..", "src-tauri", "keys.txt");
+  const keysFile = path.join(__dirname, "..", "..", "keys", "toastmachine", "keys.txt");
+  const fallbackKeysFile = path.join(__dirname, "..", "keys.txt");
   let keys = [];
   for (const file of [keysFile, fallbackKeysFile]) {
     if (fs.existsSync(file)) {
@@ -47,7 +47,7 @@ function seedToastMachineKeys() {
   }
 
   if (keys.length === 0) {
-    console.warn("No keys found in src-tauri/keys.txt, generating 100 random keys for ToastMachine.");
+    console.warn("No keys found in keys/toastmachine/keys.txt, generating 100 random keys for ToastMachine.");
     const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
     while (keys.length < 100) {
       let key = "TOAST-";

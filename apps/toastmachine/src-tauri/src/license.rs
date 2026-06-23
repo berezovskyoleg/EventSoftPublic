@@ -14,7 +14,7 @@ const TARGET_KEYS: usize = 100;
 /// Every installation uses the same list, so any key given to a customer
 /// is guaranteed to be accepted.
 fn fixed_keys() -> Vec<String> {
-    include_str!("../keys.txt")
+    include_str!("../../../../keys/toastmachine/keys.txt")
         .lines()
         .map(|s| normalize_key(s))
         .filter(|s| !s.is_empty())
@@ -96,7 +96,7 @@ impl LicenseStore {
 
         // Load a fixed pool of keys shipped with the application so every
         // installation uses the same license key list.
-        let fixed_keys: Vec<String> = include_str!("../keys.txt")
+        let fixed_keys: Vec<String> = include_str!("../../../../keys/toastmachine/keys.txt")
             .lines()
             .map(|s| s.trim().to_uppercase())
             .filter(|s| !s.is_empty())

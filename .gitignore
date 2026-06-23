@@ -15,15 +15,17 @@ node_modules
 
 # next.js
 /.next/
+/apps/*/.next/
 /out/
 /dist/
+/apps/*/dist/
 
 # production
 /build
 
 # tauri
-/src-tauri/target/
-/src-tauri/icons/icon-source.png
+/apps/toastmachine/src-tauri/target/
+/apps/toastmachine/src-tauri/icons/icon-source.png
 
 # misc
 .DS_Store
@@ -71,7 +73,7 @@ releases/
 # license signing keys (private key must stay secret)
 license_private.pem
 license_private_base64.txt
-license_public.pem
+/license_public.pem
 
-# duplicated build-time copy of keys (source of truth is src-tauri/keys.txt)
+# duplicated build-time copy of keys (source of truth is keys/toastmachine/keys.txt)
 license-server/keys.txt
