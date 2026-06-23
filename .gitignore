@@ -72,3 +72,6 @@ releases/
 license_private.pem
 license_private_base64.txt
 license_public.pem
+
+# duplicated build-time copy of keys (source of truth is src-tauri/keys.txt)
+license-server/keys.txt
