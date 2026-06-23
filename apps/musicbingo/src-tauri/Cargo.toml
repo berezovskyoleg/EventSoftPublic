@@ -1,6 +1,6 @@
 [package]
 name = "musicbingo"
-version = "0.1.0"
+version = "0.1.1"
 description = "MusicBingo — offline music bingo game for events and parties"
 authors = ["EventSoft"]
 edition = "2021"
