@@ -209,12 +209,8 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
     sound.uiClick();
     setShowWinner(false);
     setWinner(null);
-    // If everyone has spoken, "Крутить снова" should instead reveal the
-    // round-complete state.
-    if (remaining.length <= 1) {
-      setAllDone(true);
-      return;
-    }
+    // Always spin while there is at least one guest left. The round-complete
+    // overlay is shown automatically after the final spin finishes.
     setTimeout(() => spin(), 250);
   }
 
@@ -559,7 +555,11 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
       {/* Winner overlay */}
       <AnimatePresence>
         {showWinner && winner && !allDone && (
-          <WinnerOverlay winner={winner} onAgain={spinAgain} onEdit={editList} />
+          <WinnerOverlay
+            winner={winner}
+            onAgain={spinAgain}
+            remainingCount={remainingCount}
+          />
         )}
       </AnimatePresence>
 
@@ -569,7 +569,6 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
           <RoundCompleteOverlay
             spoken={spoken}
             onNewRound={startNewRound}
-            onEdit={editList}
           />
         )}
       </AnimatePresence>
@@ -580,11 +579,11 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
 function WinnerOverlay({
   winner,
   onAgain,
-  onEdit,
+  remainingCount,
 }: {
   winner: string;
   onAgain: () => void;
-  onEdit: () => void;
+  remainingCount: number;
 }) {
   return (
     <motion.div
@@ -636,15 +635,7 @@ function WinnerOverlay({
             className="bg-gradient-to-b from-amber-400 to-amber-600 font-bold text-[#1a0f0a] hover:from-amber-300 hover:to-amber-500"
           >
             <RotateCcw className="mr-1 h-4 w-4" />
-            Крутить снова
-          </Button>
-          <Button
-            variant="outline"
-            onClick={onEdit}
-            className="border-amber-700/40 bg-transparent text-amber-200 hover:bg-amber-900/30 hover:text-amber-100"
-          >
-            <PencilLine className="mr-1 h-4 w-4" />
-            Изменить список
+            {remainingCount === 1 ? "Последний тост!" : "Крутить снова"}
           </Button>
         </div>
       </motion.div>
@@ -655,11 +646,9 @@ function WinnerOverlay({
 function RoundCompleteOverlay({
   spoken,
   onNewRound,
-  onEdit,
 }: {
   spoken: string[];
   onNewRound: () => void;
-  onEdit: () => void;
 }) {
   return (
     <motion.div
@@ -723,14 +712,6 @@ function RoundCompleteOverlay({
           >
             <RotateCcw className="mr-1 h-4 w-4" />
             Новый раунд
-          </Button>
-          <Button
-            variant="outline"
-            onClick={onEdit}
-            className="border-amber-700/40 bg-transparent text-amber-200 hover:bg-amber-900/30 hover:text-amber-100"
-          >
-            <PencilLine className="mr-1 h-4 w-4" />
-            Изменить список
           </Button>
         </div>
       </motion.div>
