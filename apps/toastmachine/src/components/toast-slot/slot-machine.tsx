@@ -615,7 +615,7 @@ function WinnerOverlay({
         </motion.div>
 
         <p className="text-sm font-semibold uppercase tracking-[0.3em] text-amber-400/80">
-          Победитель
+          Следующий тост
         </p>
         <motion.h2
           initial={{ opacity: 0, y: 10 }}
@@ -626,7 +626,7 @@ function WinnerOverlay({
           {winner}
         </motion.h2>
         <p className="mt-3 text-base text-amber-200/70">
-          Поздравляем! Ваш тост!
+          Прошу к слову!
         </p>
 
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">

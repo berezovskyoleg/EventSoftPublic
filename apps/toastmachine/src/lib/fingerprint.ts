@@ -82,7 +82,7 @@ function audioSignature(): string {
     // We don't actually render (keeps it sync & fast); the mere presence +
     // sampleRate/channelCount is enough signal.
     const ctx = new AC(1, 1, 44100);
-    return `${ctx.sampleRate}-${ctx.channelCount}`;
+    return `${ctx.sampleRate}-${ctx.destination.channelCount}`;
   } catch {
     return "audio-blocked";
   }
