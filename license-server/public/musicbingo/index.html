@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MusicBingo — EventSoft</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100">
+  <header class="border-b border-slate-800 bg-slate-900/50 sticky top-0 z-50 backdrop-blur">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <a href="/" class="text-2xl font-black tracking-tight text-amber-400">EventSoft</a>
+      <nav class="hidden md:flex items-center gap-6 text-sm">
+        <a href="/toastmachine" class="text-slate-300 hover:text-white transition">ToastMachine</a>
+        <a href="/fastquiz" class="text-slate-300 hover:text-white transition">FastQuiz</a>
+        <a href="/musicbingo" class="text-white font-medium">MusicBingo</a>
+        <a href="/admin" class="text-slate-400 hover:text-white transition">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="max-w-3xl mx-auto px-6 py-20 text-center">
+      <div class="text-6xl mb-6">🎵</div>
+      <h1 class="text-4xl md:text-5xl font-black mb-6">MusicBingo</h1>
+      <p class="text-slate-400 text-lg mb-8">
+        Музыкальное бинго для вечеринок и корпоративов. Гости отмечают услышанные песни
+        и первый, кто соберёт комбинацию, побеждает.
+      </p>
+      <div class="inline-block bg-slate-800 text-slate-400 font-bold px-6 py-3 rounded-xl mb-12">
+        Скоро в продаже
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-left">
+        <h2 class="text-xl font-bold mb-4">Хочу узнать о запуске</h2>
+        <form id="notifyForm" class="space-y-4">
+          <div>
+            <label class="block text-sm text-slate-400 mb-1">Имя</label>
+            <input type="text" name="name" required maxlength="120" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-amber-500" />
+          </div>
+          <div>
+            <label class="block text-sm text-slate-400 mb-1">Контакт (email, Telegram, VK)</label>
+            <input type="text" name="contact" maxlength="120" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-amber-500" />
+          </div>
+          <div>
+            <label class="block text-sm text-slate-400 mb-1">Что важно в музыкальном бинго?</label>
+            <textarea name="message" required minlength="5" maxlength="4000" rows="3" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-amber-500"></textarea>
+          </div>
+          <input type="text" name="app" value="musicbingo" class="hidden" />
+          <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl transition">
+            Отправить
+          </button>
+          <div id="notifyResult" class="hidden text-sm text-center"></div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-800 py-10">
+    <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-slate-500">
+      <div>© EventSoft</div>
+      <div>
+        По вопросам: <a href="https://vk.com/berezovskyoleg" target="_blank" class="text-amber-400 hover:underline">vk.com/berezovskyoleg</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('notifyForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const result = document.getElementById('notifyResult');
+      result.className = 'hidden text-sm text-center';
+      try {
+        const res = await fetch('/api/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: fd.get('name'),
+            contact: fd.get('contact'),
+            message: fd.get('message'),
+            app: fd.get('app'),
+          }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          result.textContent = 'Спасибо! Мы запомнили ваш интерес.';
+          result.className = 'text-sm text-center text-emerald-400';
+          e.target.reset();
+        } else {
+          result.textContent = data.error || 'Не удалось отправить.';
+          result.className = 'text-sm text-center text-red-400';
+        }
+      } catch (err) {
+        result.textContent = 'Ошибка соединения. Попробуйте позже.';
+        result.className = 'text-sm text-center text-red-400';
+      }
+      result.classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>

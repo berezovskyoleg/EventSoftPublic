@@ -21,6 +21,14 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/feedback", feedbackRoutes);
 app.use("/api/releases", releasesRoutes);
 
+// App landing pages (before static to avoid directory redirect)
+const APP_SLUGS = ["toastmachine", "fastquiz", "musicbingo"];
+for (const slug of APP_SLUGS) {
+  app.get([`/${slug}`, `/${slug}/`], (req, res) => {
+    res.sendFile(path.join(__dirname, "..", "public", slug, "index.html"));
+  });
+}
+
 // Static files
 app.use("/releases", express.static(path.join(__dirname, "..", "releases")));
 app.use("/admin", express.static(path.join(__dirname, "..", "public", "admin")));

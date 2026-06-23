@@ -97,8 +97,18 @@ function ensureFeedbackTable() {
   `).run();
 }
 
+function migrateLicenseKeys() {
+  try {
+    db.prepare("ALTER TABLE license_keys ADD COLUMN customer_email TEXT").run();
+    console.log("Added customer_email column.");
+  } catch (e) {
+    // Column already exists.
+  }
+}
+
 seedApps();
 seedToastMachineKeys();
 seedAdmin();
 ensureFeedbackTable();
+migrateLicenseKeys();
 console.log("Initialization complete.");

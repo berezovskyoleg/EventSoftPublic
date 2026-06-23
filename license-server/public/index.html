@@ -3,159 +3,54 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EventSoft</title>
+  <title>EventSoft — софт для мероприятий</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-950 text-slate-100">
   <header class="border-b border-slate-800 bg-slate-900/50 sticky top-0 z-50 backdrop-blur">
     <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-      <div class="text-2xl font-black tracking-tight text-amber-400">EventSoft</div>
+      <a href="/" class="text-2xl font-black tracking-tight text-amber-400">EventSoft</a>
       <nav class="hidden md:flex items-center gap-6 text-sm">
-        <a href="#download" class="text-slate-300 hover:text-white transition">Скачать</a>
-        <a href="#instructions" class="text-slate-300 hover:text-white transition">Как пользоваться</a>
-        <a href="#feedback" class="text-slate-300 hover:text-white transition">Предложения</a>
+        <a href="/toastmachine" class="text-slate-300 hover:text-white transition">ToastMachine</a>
+        <a href="/fastquiz" class="text-slate-300 hover:text-white transition">FastQuiz</a>
+        <a href="/musicbingo" class="text-slate-300 hover:text-white transition">MusicBingo</a>
         <a href="/admin" class="text-slate-400 hover:text-white transition">Admin</a>
       </nav>
     </div>
   </header>
 
   <main>
-    <!-- Hero -->
     <section class="max-w-6xl mx-auto px-6 py-20 text-center">
-      <h1 class="text-4xl md:text-6xl font-black mb-6">
-        <span class="bg-gradient-to-r from-amber-300 to-amber-500 bg-clip-text text-transparent">ToastMachine</span>
-      </h1>
-      <p class="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto mb-10">
-        Слот-машина для выбора того, кто произнесёт тост на свадьбе, корпоративе или вечеринке.
-        Купите ключ, скачайте приложение и запускайте за пару минут.
+      <h1 class="text-4xl md:text-5xl font-black mb-6">Софт для мероприятий</h1>
+      <p class="text-slate-400 text-lg max-w-2xl mx-auto mb-12">
+        Лицензионные приложения для свадеб, корпоративов и вечеринок.
+        Выбирайте продукт, покупайте ключ и запускайте за пару минут.
       </p>
-      <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-        <a href="#download" class="inline-block bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-8 py-4 rounded-xl transition text-lg">
-          Скачать приложение
+
+      <div class="grid md:grid-cols-3 gap-8 text-left">
+        <!-- ToastMachine -->
+        <a href="/toastmachine" class="group bg-slate-900 border border-slate-800 rounded-2xl p-6 hover:border-amber-500/50 transition">
+          <div class="text-4xl mb-4">🎰</div>
+          <h2 class="text-2xl font-bold mb-2 group-hover:text-amber-400 transition">ToastMachine</h2>
+          <p class="text-slate-400 mb-6">Слот-машина для случайного выбора гостя, который произнесёт тост.</p>
+          <span class="inline-block text-amber-400 font-semibold">Подробнее →</span>
         </a>
-        <a href="#instructions" class="inline-block border border-slate-700 hover:border-slate-500 text-slate-300 font-semibold px-8 py-4 rounded-xl transition text-lg">
-          Как активировать
+
+        <!-- FastQuiz -->
+        <a href="/fastquiz" class="group bg-slate-900 border border-slate-800 rounded-2xl p-6 opacity-75 hover:opacity-100 hover:border-amber-500/50 transition">
+          <div class="text-4xl mb-4">⚡</div>
+          <h2 class="text-2xl font-bold mb-2 group-hover:text-amber-400 transition">FastQuiz</h2>
+          <p class="text-slate-400 mb-6">Быстрые викторины для интерактива на мероприятиях.</p>
+          <span class="inline-block text-slate-500 font-semibold">Скоро</span>
         </a>
-      </div>
-    </section>
 
-    <!-- Download -->
-    <section id="download" class="bg-slate-900/50 border-y border-slate-800 py-20">
-      <div class="max-w-6xl mx-auto px-6">
-        <h2 class="text-3xl font-black mb-10 text-center">Скачать ToastMachine</h2>
-        <div class="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-          <!-- macOS -->
-          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center hover:border-amber-500/50 transition">
-            <div class="text-5xl mb-4">🍎</div>
-            <h3 class="text-xl font-bold mb-2">macOS</h3>
-            <p class="text-slate-400 text-sm mb-6">Apple Silicon (M1/M2/M3).<br>Intel — пока только через Rosetta.</p>
-            <a id="macosDownload" href="#" class="inline-block w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed">
-              Скачать DMG
-            </a>
-            <div id="macosVersion" class="mt-3 text-xs text-slate-500">Загрузка версии...</div>
-          </div>
-
-          <!-- Windows -->
-          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center hover:border-amber-500/50 transition">
-            <div class="text-5xl mb-4">🪟</div>
-            <h3 class="text-xl font-bold mb-2">Windows</h3>
-            <p class="text-slate-400 text-sm mb-6">Установщик для Windows 10/11.<br>Рекомендуется 64-bit.</p>
-            <a id="windowsDownload" href="#" class="inline-block w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed">
-              Скачать установщик
-            </a>
-            <div id="windowsVersion" class="mt-3 text-xs text-slate-500">Загрузка версии...</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Instructions -->
-    <section id="instructions" class="max-w-6xl mx-auto px-6 py-20">
-      <h2 class="text-3xl font-black mb-10 text-center">Как открыть и активировать</h2>
-
-      <div class="grid md:grid-cols-2 gap-8 mb-16">
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 font-bold">1</span>
-            <h3 class="text-xl font-bold">Скачайте и установите</h3>
-          </div>
-          <p class="text-slate-400 leading-relaxed">
-            <strong>Mac:</strong> откройте DMG и перетащите ToastMachine в папку «Программы».<br>
-            <strong>Windows:</strong> запустите скачанный установщик и следуйте инструкциям мастера.
-          </p>
-        </div>
-
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 font-bold">2</span>
-            <h3 class="text-xl font-bold">Разрешите запуск</h3>
-          </div>
-          <p class="text-slate-400 leading-relaxed">
-            <strong>Mac:</strong> в «Системных настройках → Конфиденциальность и безопасность» нажмите <strong>«Всё равно открыть»</strong>.<br>
-            <strong>Windows:</strong> при появлении окна SmartScreen нажмите <strong>«Подробнее» → «Выполнить в любом случае»</strong>.<br>
-            Это безопасно — приложение скачано с официального сайта.
-          </p>
-        </div>
-
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 font-bold">3</span>
-            <h3 class="text-xl font-bold">Введите лицензионный ключ</h3>
-          </div>
-          <p class="text-slate-400 leading-relaxed">
-            При первом запуске приложение попросит ключ вида <code class="bg-slate-800 px-2 py-1 rounded text-amber-300">TOAST-XXXX-XXXX-XXXX</code>.
-            Введите его и нажмите «Активировать». Ключ привязывается к этому компьютеру.
-          </p>
-        </div>
-
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/20 text-amber-400 font-bold">4</span>
-            <h3 class="text-xl font-bold">Пользуйтесь офлайн</h3>
-          </div>
-          <p class="text-slate-400 leading-relaxed">
-            После активации интернет больше не нужен. Нажмите кнопку «Крутить» — барабан выберет счастливчика,
-            который произнесёт тост. Можно добавлять и редактировать список гостей.
-          </p>
-        </div>
-      </div>
-
-      <div class="bg-amber-950/30 border border-amber-800/30 rounded-2xl p-6 max-w-3xl mx-auto">
-        <h3 class="font-bold text-amber-200 mb-2">Важно: один ключ = одно устройство</h3>
-        <p class="text-amber-200/70 text-sm leading-relaxed">
-          Ключ активируется только на том компьютере, где был впервые введён. Если вы хотите перенести лицензию
-          на другой Mac, напишите нам — мы сбросим привязку вручную.
-        </p>
-      </div>
-    </section>
-
-    <!-- Feedback -->
-    <section id="feedback" class="bg-slate-900/50 border-y border-slate-800 py-20">
-      <div class="max-w-2xl mx-auto px-6">
-        <h2 class="text-3xl font-black mb-4 text-center">Предложения и доработки</h2>
-        <p class="text-slate-400 text-center mb-10">
-          Расскажите, какой функционал вам нужен, или сообщите об ошибке. Мы читаем каждое сообщение.
-        </p>
-
-        <form id="feedbackForm" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-          <div>
-            <label class="block text-sm text-slate-400 mb-1">Ваше имя</label>
-            <input type="text" name="name" required maxlength="120" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-amber-500" placeholder="Иван" />
-          </div>
-          <div>
-            <label class="block text-sm text-slate-400 mb-1">Контакт (email, Telegram, VK)</label>
-            <input type="text" name="contact" maxlength="120" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-amber-500" placeholder="@username или email@example.com" />
-          </div>
-          <div>
-            <label class="block text-sm text-slate-400 mb-1">Сообщение</label>
-            <textarea name="message" required minlength="5" maxlength="4000" rows="5" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-amber-500" placeholder="Хотелось бы видеть... / Не работает..."></textarea>
-          </div>
-          <input type="text" name="app" value="toastmachine" class="hidden" />
-          <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl transition">
-            Отправить
-          </button>
-          <div id="feedbackResult" class="hidden text-sm text-center"></div>
-        </form>
+        <!-- MusicBingo -->
+        <a href="/musicbingo" class="group bg-slate-900 border border-slate-800 rounded-2xl p-6 opacity-75 hover:opacity-100 hover:border-amber-500/50 transition">
+          <div class="text-4xl mb-4">🎵</div>
+          <h2 class="text-2xl font-bold mb-2 group-hover:text-amber-400 transition">MusicBingo</h2>
+          <p class="text-slate-400 mb-6">Музыкальное бинго для вечеринок и корпоративов.</p>
+          <span class="inline-block text-slate-500 font-semibold">Скоро</span>
+        </a>
       </div>
     </section>
   </main>
@@ -168,72 +63,5 @@
       </div>
     </div>
   </footer>
-
-  <script>
-    // Load latest release info
-    async function loadReleases() {
-      try {
-        const res = await fetch('/api/releases/latest');
-        const data = await res.json();
-        const macBtn = document.getElementById('macosDownload');
-        const macVer = document.getElementById('macosVersion');
-        const winBtn = document.getElementById('windowsDownload');
-        const winVer = document.getElementById('windowsVersion');
-        if (data.ok && data.macos) {
-          macBtn.href = data.macos;
-          macVer.textContent = 'Версия ' + (data.version || '');
-        } else {
-          macBtn.classList.add('opacity-50', 'cursor-not-allowed');
-          macBtn.removeAttribute('href');
-          macVer.textContent = 'Сборка пока недоступна';
-        }
-        if (data.ok && data.windows) {
-          winBtn.href = data.windows;
-          winVer.textContent = 'Версия ' + (data.version || '');
-        } else {
-          winBtn.classList.add('opacity-50', 'cursor-not-allowed');
-          winBtn.removeAttribute('href');
-          winVer.textContent = 'Сборка пока недоступна';
-        }
-      } catch (e) {
-        console.error('Failed to load releases', e);
-      }
-    }
-
-    // Feedback form
-    document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const fd = new FormData(e.target);
-      const result = document.getElementById('feedbackResult');
-      result.className = 'hidden text-sm text-center';
-      try {
-        const res = await fetch('/api/feedback', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: fd.get('name'),
-            contact: fd.get('contact'),
-            message: fd.get('message'),
-            app: fd.get('app'),
-          }),
-        });
-        const data = await res.json();
-        if (data.ok) {
-          result.textContent = 'Спасибо! Мы получили ваше сообщение.';
-          result.className = 'text-sm text-center text-emerald-400';
-          e.target.reset();
-        } else {
-          result.textContent = data.error || 'Не удалось отправить.';
-          result.className = 'text-sm text-center text-red-400';
-        }
-      } catch (err) {
-        result.textContent = 'Ошибка соединения. Попробуйте позже.';
-        result.className = 'text-sm text-center text-red-400';
-      }
-      result.classList.remove('hidden');
-    });
-
-    loadReleases();
-  </script>
 </body>
 </html>

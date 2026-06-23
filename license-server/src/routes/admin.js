@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../db");
 const authMiddleware = require("../middleware/auth");
+const { sendLicenseKey } = require("../mailer");
 
 const router = express.Router();
 
@@ -180,6 +181,65 @@ router.post("/keys/generate", authMiddleware, (req, res) => {
     return res.json({ ok: true, generated: generated.length, keys: generated });
   } catch (err) {
     console.error("generate error", err);
+    return res.status(500).json({ ok: false, error: "Server error" });
+  }
+});
+
+// POST /api/admin/keys/issue
+router.post("/keys/issue", authMiddleware, (req, res) => {
+  try {
+    const { app: appSlug, email, notes } = req.body;
+    if (!appSlug || !email) {
+      return res.status(400).json({ ok: false, error: "Укажите приложение и email." });
+    }
+    const cleanEmail = String(email).trim().toLowerCase();
+    if (!cleanEmail.includes("@")) {
+      return res.status(400).json({ ok: false, error: "Некорректный email." });
+    }
+
+    const app = db.prepare("SELECT * FROM apps WHERE slug = ?").get(appSlug);
+    if (!app) {
+      return res.status(404).json({ ok: false, error: "App not found" });
+    }
+
+    // One key per email per app.
+    const existing = db
+      .prepare(
+        "SELECT * FROM license_keys WHERE app_id = ? AND customer_email = ? AND status IN ('sold','activated')"
+      )
+      .get(app.id, cleanEmail);
+    if (existing) {
+      return res.status(400).json({
+        ok: false,
+        error: `На этот email уже выдан ключ: ${existing.key}`,
+      });
+    }
+
+    const keyRecord = db
+      .prepare(
+        "SELECT * FROM license_keys WHERE app_id = ? AND status = 'available' AND (customer_email IS NULL OR customer_email = '') ORDER BY created_at ASC, id ASC LIMIT 1"
+      )
+      .get(app.id);
+    if (!keyRecord) {
+      return res.status(400).json({
+        ok: false,
+        error: "Нет доступных ключей. Сгенерируйте новые.",
+      });
+    }
+
+    const now = new Date().toISOString();
+    db.prepare(
+      "UPDATE license_keys SET status = 'sold', sold_at = ?, customer_email = ?, notes = ? WHERE id = ?"
+    ).run(now, cleanEmail, notes || null, keyRecord.id);
+
+    const instructionsUrl = `https://soft.eventhunt.ru/${app.slug}`;
+    sendLicenseKey(cleanEmail, app.name, keyRecord.key, instructionsUrl).catch((err) => {
+      console.error("Failed to send license email", err);
+    });
+
+    return res.json({ ok: true, key: keyRecord.key, email: cleanEmail });
+  } catch (err) {
+    console.error("issue key error", err);
     return res.status(500).json({ ok: false, error: "Server error" });
   }
 });

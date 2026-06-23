@@ -18,3 +18,8 @@ services:
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD_HASH=${ADMIN_PASSWORD_HASH:?ADMIN_PASSWORD_HASH is required}
       - LICENSE_PRIVATE_KEY_BASE64=${LICENSE_PRIVATE_KEY_BASE64:?LICENSE_PRIVATE_KEY_BASE64 is required}
+      - SMTP_HOST=${SMTP_HOST:-smtp.spaceweb.ru}
+      - SMTP_PORT=${SMTP_PORT:-465}
+      - SMTP_USER=${SMTP_USER:?SMTP_USER is required}
+      - SMTP_PASS=${SMTP_PASS:?SMTP_PASS is required}
+      - SMTP_FROM=${SMTP_FROM:-soft@eventhunt.ru}

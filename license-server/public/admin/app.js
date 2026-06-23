@@ -139,6 +139,20 @@ async function generateKeys() {
   }
 }
 
+async function issueKeyByEmail(email, notes) {
+  const data = await api("POST", "/admin/keys/issue", {
+    app: state.currentApp,
+    email,
+    notes,
+  });
+  if (data && data.ok) {
+    alert(`Ключ ${data.key} выдан на ${data.email} и отправлен по почте.`);
+    loadKeys();
+  } else {
+    alert(data?.error || "Ошибка выдачи ключа.");
+  }
+}
+
 async function loadFeedback() {
   const data = await api("GET", "/admin/feedback");
   if (data && data.ok) {
@@ -202,6 +216,16 @@ function renderDashboard() {
     </div>
 
     <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-6">
+      <h3 class="text-sm font-semibold text-slate-300 mb-3">Выдать ключ по email</h3>
+      <form id="issueForm" class="flex flex-col md:flex-row gap-3">
+        <input type="email" name="email" required placeholder="customer@example.com" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-amber-500" />
+        <input type="text" name="notes" placeholder="Комментарий (необязательно)" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-amber-500" />
+        <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-lg transition">Выдать и отправить</button>
+      </form>
+      <div id="issueResult" class="hidden text-sm mt-2"></div>
+    </div>
+
+    <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 mb-6">
       <div class="flex flex-col md:flex-row gap-4">
         <select id="appSelect" class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2">
           ${state.apps
@@ -230,6 +254,7 @@ function renderDashboard() {
             <th class="text-left px-4 py-3 font-medium">Ключ</th>
             <th class="text-left px-4 py-3 font-medium">Статус</th>
             <th class="text-left px-4 py-3 font-medium">Продан</th>
+            <th class="text-left px-4 py-3 font-medium">Email покупателя</th>
             <th class="text-left px-4 py-3 font-medium">Активирован</th>
             <th class="text-left px-4 py-3 font-medium">Устройство</th>
             <th class="text-right px-4 py-3 font-medium">Действия</th>
@@ -245,6 +270,7 @@ function renderDashboard() {
                 <span class="inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${statusClass(k.status)}">${statusLabel(k.status)}</span>
               </td>
               <td class="px-4 py-3 text-slate-400">${formatDate(k.sold_at)}</td>
+              <td class="px-4 py-3 text-slate-400 text-xs truncate max-w-[150px]" title="${k.customer_email || ""}">${k.customer_email || "—"}</td>
               <td class="px-4 py-3 text-slate-400">${formatDate(k.activated_at)}</td>
               <td class="px-4 py-3 text-slate-400 font-mono text-xs truncate max-w-[150px]" title="${k.device_fingerprint || ""}">${k.device_fingerprint ? k.device_fingerprint.slice(0, 16) + "..." : "—"}</td>
               <td class="px-4 py-3 text-right space-x-2">
@@ -270,6 +296,27 @@ function renderDashboard() {
   document.getElementById("feedbackBtn").addEventListener("click", () => {
     state.view = "feedback";
     loadFeedback();
+  });
+  document.getElementById("issueForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const result = document.getElementById("issueResult");
+    result.className = "hidden text-sm mt-2";
+    const data = await api("POST", "/admin/keys/issue", {
+      app: state.currentApp,
+      email: fd.get("email"),
+      notes: fd.get("notes"),
+    });
+    if (data && data.ok) {
+      result.textContent = `Выдан ${data.key} на ${data.email}`;
+      result.className = "text-sm mt-2 text-emerald-400";
+      e.target.reset();
+      loadKeys();
+    } else {
+      result.textContent = data?.error || "Ошибка выдачи";
+      result.className = "text-sm mt-2 text-red-400";
+    }
+    result.classList.remove("hidden");
   });
   document.getElementById("appSelect").addEventListener("change", (e) => {
     state.currentApp = e.target.value;
