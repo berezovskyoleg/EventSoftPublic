@@ -69,6 +69,17 @@ cd license-server && npm run init
 6. Корневой `README.md` и `package.json` созданы.
 7. Сборка admin CLI проверена локально.
 
+## Деплой
+
+Подробная инструкция по обновлению сайта и релизов: `.kimi/DEPLOY.md`.
+
+Кратко:
+1. Бамп версии в `apps/toastmachine/package.json`, `Cargo.toml`, `tauri.conf.json`.
+2. Запушить тег `v*`, дождаться GitHub Actions.
+3. Скачать артефакты macOS и Windows из workflow.
+4. Залить в `license-server/releases/` и на сервер `root@soft.eventhunt.ru:/opt/eventhunt-license-server/releases/`.
+5. Синхронизировать `license-server/public/` на сервер.
+
 ## Безопасность
 
 - Токены, пароли и приватные ключи не хранятся в этом файле.
