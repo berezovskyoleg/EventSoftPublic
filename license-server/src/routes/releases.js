@@ -10,29 +10,40 @@ function parseVersion(filename) {
   return match ? match[1] : null;
 }
 
-// GET /api/releases/latest
+function findLatest(dir) {
+  if (!fs.existsSync(dir)) {
+    return { version: null, macos: null, windows: null };
+  }
+  const files = fs.readdirSync(dir);
+  const macos = files
+    .filter((f) => f.endsWith(".dmg"))
+    .sort()
+    .pop();
+  const windows = files
+    .filter((f) => f.endsWith(".msi") || f.endsWith(".exe"))
+    .sort()
+    .pop();
+
+  const version = parseVersion(macos || windows || "") || null;
+  return {
+    version,
+    macos: macos ? `/releases/${path.basename(dir)}/${macos}` : null,
+    windows: windows ? `/releases/${path.basename(dir)}/${windows}` : null,
+  };
+}
+
+// GET /api/releases/latest?app=musicbingo
 router.get("/latest", (req, res) => {
   try {
-    if (!fs.existsSync(RELEASES_DIR)) {
-      return res.json({ ok: true, macos: null, windows: null, version: null });
-    }
-    const files = fs.readdirSync(RELEASES_DIR);
-    const macos = files
-      .filter((f) => f.endsWith(".dmg"))
-      .sort()
-      .pop();
-    const windows = files
-      .filter((f) => f.endsWith(".msi") || f.endsWith(".exe"))
-      .sort()
-      .pop();
-
-    const version = parseVersion(macos || windows || "") || null;
+    const app = (req.query.app || "").toString().replace(/[^a-z0-9_-]/gi, "");
+    const dir = app ? path.join(RELEASES_DIR, app) : RELEASES_DIR;
+    const result = findLatest(dir);
 
     return res.json({
       ok: true,
-      version,
-      macos: macos ? `/releases/${macos}` : null,
-      windows: windows ? `/releases/${windows}` : null,
+      version: result.version,
+      macos: result.macos,
+      windows: result.windows,
     });
   } catch (err) {
     console.error("releases error", err);

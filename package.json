@@ -7,6 +7,9 @@
     "dev:toastmachine": "cd apps/toastmachine && npm run dev",
     "build:toastmachine": "cd apps/toastmachine && npm run tauri:build",
     "dev:toastmachine:tauri": "cd apps/toastmachine && npm run tauri:dev",
+    "dev:musicbingo": "cd apps/musicbingo && npm run dev",
+    "dev:musicbingo:tauri": "cd apps/musicbingo && npm run tauri:dev",
+    "build:musicbingo": "cd apps/musicbingo && npm run tauri:build",
     "dev:license-server": "cd license-server && npm run dev",
     "start:license-server": "cd license-server && npm start",
     "init:license-server": "cd license-server && npm run init"

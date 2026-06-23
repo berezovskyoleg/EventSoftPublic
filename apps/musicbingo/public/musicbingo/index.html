@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MusicBingo — скачать</title>
+  <style>
+    :root { --bg:#0f0f13; --card:#1a1a24; --accent:#ff4081; --text:#f0f0f0; --muted:#888; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--text); }
+    .hero { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60vh; text-align:center; padding:40px 20px; }
+    .hero h1 { font-size:3rem; margin:0 0 12px; }
+    .hero p { color:var(--muted); font-size:1.1rem; max-width:560px; margin:0 auto 32px; }
+    .logo { width:120px; height:120px; border-radius:24px; background:linear-gradient(135deg,#6366f1,#ec4899); display:flex; align-items:center; justify-content:center; font-size:3rem; margin-bottom:24px; }
+    .buttons { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; }
+    .btn { display:inline-flex; align-items:center; gap:8px; padding:14px 28px; border-radius:12px; text-decoration:none; font-weight:600; transition:.2s; }
+    .btn-primary { background:var(--accent); color:#fff; }
+    .btn-primary:hover { opacity:.9; }
+    .btn-secondary { background:var(--card); color:var(--text); border:1px solid #333; }
+    .btn-secondary:hover { border-color:#555; }
+    .features { max-width:900px; margin:0 auto; padding:40px 20px; display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px; }
+    .feature { background:var(--card); padding:24px; border-radius:16px; }
+    .feature h3 { margin:0 0 8px; }
+    .feature p { margin:0; color:var(--muted); }
+    footer { text-align:center; padding:40px 20px; color:var(--muted); font-size:.9rem; }
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <div class="logo">🎵</div>
+    <h1>MusicBingo</h1>
+    <p>Музыкальное бинго для вечеринок и мероприятий. Ведущий играет отрывки песен, игроки отмечают их на карточках по телефону.</p>
+    <div class="buttons">
+      <a id="mac" class="btn btn-primary" href="#">Скачать для macOS</a>
+      <a id="win" class="btn btn-secondary" href="#">Скачать для Windows</a>
+    </div>
+  </section>
+
+  <section class="features">
+    <div class="feature">
+      <h3>🎧 Своя музыка</h3>
+      <p>Загружайте собственные MP3/WAV отрывки и создавайте плейлисты.</p>
+    </div>
+    <div class="feature">
+      <h3>📱 Игроки по QR-коду</h3>
+      <p>Гости открывают карточку на телефоне, сканируя QR-код ведущего.</p>
+    </div>
+    <div class="feature">
+      <h3>🏆 Автопроверка бинго</h3>
+      <p>Приложение автоматически проверяет собранные паттерны и фиксирует победителей.</p>
+    </div>
+  </section>
+
+  <footer>
+    © EventSoft — MusicBingo
+  </footer>
+
+  <script>
+    fetch('/api/releases/latest?app=musicbingo')
+      .then(r => r.json())
+      .then(data => {
+        if(data.mac) document.getElementById('mac').href = data.mac;
+        if(data.windows) document.getElementById('win').href = data.windows;
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>

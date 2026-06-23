@@ -70,6 +70,57 @@ function seedToastMachineKeys() {
   console.log(`Seeded ${keys.length} keys for ToastMachine.`);
 }
 
+function seedMusicBingoKeys() {
+  const app = db.prepare("SELECT id FROM apps WHERE slug = ?").get("musicbingo");
+  if (!app) {
+    console.error("MusicBingo app not found");
+    process.exit(1);
+  }
+
+  const count = db.prepare("SELECT COUNT(*) as c FROM license_keys WHERE app_id = ?").get(app.id).c;
+  if (count > 0) {
+    console.log(`MusicBingo already has ${count} keys, skipping seed.`);
+    return;
+  }
+
+  const keysFile = path.join(__dirname, "..", "keys", "musicbingo", "keys.txt");
+  const fallbackKeysFile = path.join(__dirname, "..", "keys-musicbingo.txt");
+  let keys = [];
+  for (const file of [keysFile, fallbackKeysFile]) {
+    if (fs.existsSync(file)) {
+      keys = fs
+        .readFileSync(file, "utf-8")
+        .split("\n")
+        .map((s) => s.trim().toUpperCase())
+        .filter((s) => s.length > 0);
+      if (keys.length > 0) break;
+    }
+  }
+
+  if (keys.length === 0) {
+    console.warn("No keys found in keys/musicbingo/keys.txt, generating 100 random keys for MusicBingo.");
+    const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    while (keys.length < 100) {
+      let key = "MUSIC-";
+      for (let s = 0; s < 4; s++) {
+        let part = "";
+        for (let i = 0; i < 4; i++) {
+          part += alphabet[Math.floor(Math.random() * alphabet.length)];
+        }
+        key += part + (s < 3 ? "-" : "");
+      }
+      if (!keys.includes(key)) keys.push(key);
+    }
+  }
+
+  const insert = db.prepare("INSERT INTO license_keys (app_id, key) VALUES (?, ?)");
+  const insertMany = db.transaction((klist) => {
+    for (const k of klist) insert.run(app.id, k);
+  });
+  insertMany(keys);
+  console.log(`Seeded ${keys.length} keys for MusicBingo.`);
+}
+
 function seedAdmin() {
   const username = process.env.ADMIN_USERNAME || "admin";
   const hash = process.env.ADMIN_PASSWORD_HASH;
@@ -108,6 +159,7 @@ function migrateLicenseKeys() {
 
 seedApps();
 seedToastMachineKeys();
+seedMusicBingoKeys();
 seedAdmin();
 ensureFeedbackTable();
 migrateLicenseKeys();

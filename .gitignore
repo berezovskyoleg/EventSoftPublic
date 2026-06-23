@@ -26,6 +26,8 @@ node_modules
 # tauri
 /apps/toastmachine/src-tauri/target/
 /apps/toastmachine/src-tauri/icons/icon-source.png
+/apps/musicbingo/src-tauri/target/
+/apps/musicbingo/src-tauri/icons/icon-source.png
 
 # misc
 .DS_Store

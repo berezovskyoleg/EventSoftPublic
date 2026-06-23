@@ -9,10 +9,12 @@ EventSoft/
 ├── apps/
 │   ├── toastmachine/   # Десктопное приложение-слот для выбора тостующего (Next.js + Tauri)
 │   ├── fastquiz/       # Быстрые викторины (заглушка)
-│   └── musicbingo/     # Музыкальное бинго (заглушка)
+│   └── musicbingo/     # Музыкальное бинго (Next.js + Tauri + встроенный сервер)
 ├── license-server/     # Общий сервер лицензий и админ-панель
 ├── keys/               # Хранилища лицензионных ключей по приложениям
-│   └── toastmachine/
+│   ├── toastmachine/
+│   │   └── keys.txt
+│   └── musicbingo/
 │       └── keys.txt
 └── .github/workflows/  # CI/CD для сборки и публикации
 ```
@@ -20,8 +22,8 @@ EventSoft/
 ## Приложения
 
 - **[ToastMachine](apps/toastmachine/)** — готовое десктопное приложение для macOS и Windows.
+- **[MusicBingo](apps/musicbingo/)** — десктопное приложение для проведения музыкального бинго с карточками на телефонах игроков.
 - **[FastQuiz](apps/fastquiz/)** — заглушка будущего приложения.
-- **[MusicBingo](apps/musicbingo/)** — заглушка будущего приложения.
 
 ## Быстрые команды
 
@@ -45,7 +47,9 @@ npm run init:license-server
 
 ## Лицензирование
 
-- Источник ключей для ToastMachine: `keys/toastmachine/keys.txt`.
+- Источник ключей:
+  - ToastMachine: `keys/toastmachine/keys.txt`
+  - MusicBingo: `keys/musicbingo/keys.txt`
 - Управление лицензиями: https://soft.eventhunt.ru/admin
 - Публичная страница приложений: https://soft.eventhunt.ru/
 
