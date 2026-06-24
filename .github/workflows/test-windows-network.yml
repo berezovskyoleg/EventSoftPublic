@@ -37,3 +37,7 @@ jobs:
       - name: Test direct SourceForge NSIS download
         shell: cmd
         run: curl -L --max-time 60 -o "%TEMP%\nsis-test.zip" "https://sourceforge.net/projects/nsis/files/NSIS%%203/3.11/nsis-3.11.zip/download" && dir "%TEMP%\nsis-test.zip"
+
+      - name: Test direct GitHub NSIS tauri utils dll download
+        shell: cmd
+        run: curl -L --max-time 60 -o "%TEMP%\nsis_tauri_utils.dll" "https://github.com/tauri-apps/nsis-tauri-utils/releases/download/nsis_tauri_utils-v0.4.0/nsis_tauri_utils.dll" && dir "%TEMP%\nsis_tauri_utils.dll"
