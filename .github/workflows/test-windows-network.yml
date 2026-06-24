@@ -2,6 +2,9 @@ name: Test Windows Runner Network
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'test-network-*'
 
 jobs:
   network-check:
