@@ -28,7 +28,7 @@ jobs:
         shell: cmd
         run: |
           mkdir "C:\Windows\system32\config\systemprofile\AppData\Local\tauri\NSIS" 2>nul
-          curl -L --max-time 300 -o "C:\Windows\system32\config\systemprofile\AppData\Local\tauri\NSIS\nsis-3.11.zip" https://github.com/tauri-apps/binary-releases/releases/download/nsis-3.11/nsis-3.11.zip
+          curl -L --max-time 300 -o "C:\Windows\system32\config\systemprofile\AppData\Local\tauri\NSIS\nsis-3.11.zip" "https://sourceforge.net/projects/nsis/files/NSIS%%203/3.11/nsis-3.11.zip/download"
           cd "C:\Windows\system32\config\systemprofile\AppData\Local\tauri\NSIS"
           tar -xf nsis-3.11.zip
 
