@@ -1,0 +1,42 @@
+name: Test Windows Build
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'test-windows-*'
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: short
+
+jobs:
+  build-windows:
+    runs-on: [self-hosted, Windows]
+    defaults:
+      run:
+        working-directory: apps/musicbingo
+        shell: cmd
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set Rust default toolchain
+        run: rustup default stable
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build Windows bundle
+        run: npm run tauri:build -- --target x86_64-pc-windows-msvc
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: musicbingo-windows-x64-test
+          path: |
+            apps/musicbingo/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
+            apps/musicbingo/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
