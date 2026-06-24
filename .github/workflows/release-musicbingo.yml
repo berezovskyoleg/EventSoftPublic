@@ -17,7 +17,7 @@ env:
 
 jobs:
   build-macos:
-    runs-on: self-hosted
+    runs-on: [self-hosted, macOS]
     defaults:
       run:
         working-directory: apps/musicbingo
@@ -43,7 +43,7 @@ jobs:
             apps/musicbingo/src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
 
   build-windows:
-    runs-on: self-hosted
+    runs-on: [self-hosted, Windows]
     defaults:
       run:
         working-directory: apps/musicbingo
@@ -71,7 +71,7 @@ jobs:
 
   release:
     needs: [build-macos, build-windows]
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux]
     if: startsWith(github.ref, 'refs/tags/musicbingo-v') || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
@@ -95,7 +95,7 @@ jobs:
 
   deploy-site:
     needs: release
-    runs-on: self-hosted
+    runs-on: [self-hosted, Linux]
     if: startsWith(github.ref, 'refs/tags/musicbingo-v') || github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout
