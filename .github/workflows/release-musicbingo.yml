@@ -47,7 +47,7 @@ jobs:
     defaults:
       run:
         working-directory: apps/musicbingo
-        shell: powershell
+        shell: cmd
     steps:
       - name: Checkout
         uses: actions/checkout@v4
