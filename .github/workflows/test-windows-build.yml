@@ -31,12 +31,11 @@ jobs:
         run: npm run build
 
       - name: Build Windows bundle
-        run: npm run tauri:build -- --target x86_64-pc-windows-msvc
+        run: npm run tauri:build -- --target x86_64-pc-windows-msvc --bundles nsis
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: musicbingo-windows-x64-test
           path: |
-            apps/musicbingo/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi/*.msi
             apps/musicbingo/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
