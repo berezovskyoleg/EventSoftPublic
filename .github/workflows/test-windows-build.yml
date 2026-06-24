@@ -24,13 +24,43 @@ jobs:
       - name: Set Rust default toolchain
         run: rustup default stable
 
-      - name: Pre-download NSIS
-        shell: cmd
+      - name: Pre-download NSIS tools into Tauri cache
+        shell: powershell
         run: |
-          mkdir "C:\Windows\system32\config\systemprofile\AppData\Local\tauri\NSIS" 2>nul
-          curl -L --max-time 300 -o "C:\Windows\system32\config\systemprofile\AppData\Local\tauri\NSIS\nsis-3.11.zip" "https://sourceforge.net/projects/nsis/files/NSIS%%203/3.11/nsis-3.11.zip/download"
-          cd "C:\Windows\system32\config\systemprofile\AppData\Local\tauri\NSIS"
-          tar -xf nsis-3.11.zip
+          $ErrorActionPreference = "Stop"
+          $cache = "C:\Windows\system32\config\systemprofile\AppData\Local\tauri"
+          $nsisDir = "$cache\NSIS"
+          $toolsUrl = "https://soft.eventhunt.ru/releases/nsis-tools"
+
+          if (Test-Path $nsisDir) { Remove-Item -Recurse -Force $nsisDir }
+          New-Item -ItemType Directory -Force -Path $nsisDir | Out-Null
+
+          # NSIS 3.11
+          Invoke-WebRequest -Uri "$toolsUrl/nsis-3.11.zip" -OutFile "$nsisDir\nsis-3.11.zip" -MaximumRedirection 5
+          Expand-Archive -Path "$nsisDir\nsis-3.11.zip" -DestinationPath "$nsisDir" -Force
+          Get-ChildItem -Path "$nsisDir\nsis-3.11\*" -Recurse | Move-Item -Destination "$nsisDir" -Force -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "$nsisDir\nsis-3.11" -ErrorAction SilentlyContinue
+          Remove-Item "$nsisDir\nsis-3.11.zip" -ErrorAction SilentlyContinue
+
+          # NSIS ApplicationID plugin
+          Invoke-WebRequest -Uri "$toolsUrl/NSIS-ApplicationID.zip" -OutFile "$nsisDir\NSIS-ApplicationID.zip" -MaximumRedirection 5
+          Expand-Archive -Path "$nsisDir\NSIS-ApplicationID.zip" -DestinationPath "$nsisDir" -Force
+          New-Item -ItemType Directory -Force -Path "$nsisDir\Plugins\x86-unicode" | Out-Null
+          Copy-Item "$nsisDir\ReleaseUnicode\ApplicationID.dll" "$nsisDir\Plugins\x86-unicode\ApplicationID.dll" -Force
+          Remove-Item -Recurse -Force "$nsisDir\Debug" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "$nsisDir\DebugUnicode" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "$nsisDir\Release" -ErrorAction SilentlyContinue
+          Remove-Item -Recurse -Force "$nsisDir\ReleaseUnicode" -ErrorAction SilentlyContinue
+          Remove-Item "$nsisDir\NSIS-ApplicationID.zip" -ErrorAction SilentlyContinue
+
+          # nsis_tauri_utils plugin
+          Invoke-WebRequest -Uri "$toolsUrl/nsis_tauri_utils.dll" -OutFile "$nsisDir\nsis_tauri_utils.dll" -MaximumRedirection 5
+          Copy-Item "$nsisDir\nsis_tauri_utils.dll" "$nsisDir\Plugins\x86-unicode\nsis_tauri_utils.dll" -Force
+          New-Item -ItemType Directory -Force -Path "$nsisDir\Plugins\x86-unicode\additional" | Out-Null
+          Copy-Item "$nsisDir\nsis_tauri_utils.dll" "$nsisDir\Plugins\x86-unicode\additional\nsis_tauri_utils.dll" -Force
+
+          Write-Host "NSIS cache prepared at $nsisDir"
+          Get-ChildItem $nsisDir -Recurse | Select-Object -First 20
 
       - name: Install frontend dependencies
         run: npm install
