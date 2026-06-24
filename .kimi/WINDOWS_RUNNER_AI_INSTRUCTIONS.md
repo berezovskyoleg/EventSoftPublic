@@ -36,6 +36,21 @@
    - **Secrets:** Read
 3. Вставить токен в `.kimi/SECRETS.md`.
 
+## Учётная запись Windows
+
+**Рекомендуется:** создать отдельную локальную учётную запись для runner'а (например, `github-runner`) с правами администратора. Это позволит:
+- не смешивать личные данные сына с рабочим окружением;
+- запускать runner как системную службу, которая работает независимо от того, под кем залогинен сын;
+- избежать проблем с правами и паролями учётной записи сына.
+
+**Порядок:**
+1. Создать локальную учётную запись `github-runner` (Администратор).
+2. Залогиниться под ней.
+3. Выполнить все шаги ниже из-под этой учётной записи.
+4. После установки службы можно выйти из `github-runner`. Служба будет запускаться автоматически при включении компьютера, даже если сын сидит под своей учёткой.
+
+> Если отдельную учётку создать нельзя, можно установить runner под учётной записью сына, но тогда служба будет привязана к его паролю и профилю.
+
 ## Шаг 1. Подготовить рабочую директорию
 
 Если проект не клонирован:
@@ -47,7 +62,7 @@ cd EventSoft
 
 ## Шаг 2. Установить зависимости Windows
 
-Все команды ниже — в PowerShell от имени администратора (Run as Administrator).
+Все команды ниже — в PowerShell от имени администратора (Run as Administrator) под учётной записью `github-runner`.
 
 ### 2.1 Git
 
@@ -161,8 +176,19 @@ Remove-Item "actions-runner-win-x64-2.319.1.zip"
 
 ## Шаг 5. Установить runner как службу Windows
 
+Установи службу от имени текущего пользователя (`github-runner`), чтобы у неё был доступ к Rust, Node и другим инструментам, установленным в профиле:
+
 ```powershell
+$password = Read-Host -AsSecureString "Введи пароль пользователя github-runner"
+$credential = New-Object System.Management.Automation.PSCredential("github-runner", $password)
 .\svc.cmd install
+```
+
+> Если `svc.cmd install` не предлагает выбрать пользователя, после установки открой `services.msc`, найди службу `GitHub Actions Runner (...)`, открой Properties → Log On → This account → `github-runner`, введи пароль и примени изменения.
+
+Запусти службу:
+
+```powershell
 .\svc.cmd start
 ```
 
@@ -170,6 +196,12 @@ Remove-Item "actions-runner-win-x64-2.319.1.zip"
 
 ```powershell
 .\svc.cmd status
+```
+
+Убедись, что тип запуска службы — **Automatic**:
+
+```powershell
+Get-Service actions.runner.* | Set-Service -StartupType Automatic
 ```
 
 ## Шаг 6. Проверить, что runner онлайн в GitHub
@@ -224,6 +256,16 @@ apps/musicbingo/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.ex
 
 - Проверь, что registration token свежий.
 - Проверь логи runner: `C:\actions-runner\_diag\`.
+
+### Runner останавливается, если сын переключается на свою учётку или выходит
+
+- Значит runner установлен не как служба, а как интерактивный процесс.
+- Решение: переустанови через `svc.cmd install` и настрой запуск от имени `github-runner` в `services.msc`.
+
+### Служба не видит `cargo`/`node`/`npm`
+
+- Служба запущена не от того пользователя, под которым устанавливались зависимости.
+- Решение: в `services.msc` изменить **Log On** службы на учётную запись `github-runner` и перезапустить.
 
 ### PowerShell execution policy
 
