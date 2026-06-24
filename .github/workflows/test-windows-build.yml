@@ -27,6 +27,7 @@ jobs:
       - name: Pre-download NSIS tools into Tauri cache
         shell: powershell
         run: |
+          Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
           $ErrorActionPreference = "Stop"
           $cache = "C:\Windows\system32\config\systemprofile\AppData\Local\tauri"
           $nsisDir = "$cache\NSIS"
