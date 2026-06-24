@@ -25,9 +25,8 @@ jobs:
         run: rustup default stable
 
       - name: Pre-download NSIS tools into Tauri cache
-        shell: powershell
+        shell: pwsh
         run: |
-          Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
           $ErrorActionPreference = "Stop"
           $cache = "C:\Windows\system32\config\systemprofile\AppData\Local\tauri"
           $nsisDir = "$cache\NSIS"
