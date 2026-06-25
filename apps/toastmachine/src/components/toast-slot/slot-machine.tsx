@@ -19,6 +19,7 @@ import {
   UserX,
   UserPlus,
   Pencil,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -214,13 +215,10 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
     }, duration + 80);
   }
 
-  function spinAgain() {
+  function continueFromWinner() {
     sound.uiClick();
     setShowWinner(false);
     setWinner(null);
-    // Always spin while there is at least one guest left. The round-complete
-    // overlay is shown automatically after the final spin finishes.
-    setTimeout(() => spin(), 250);
   }
 
   function startNewRound() {
@@ -640,8 +638,7 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
         {showWinner && winner && !allDone && (
           <WinnerOverlay
             winner={winner}
-            onAgain={spinAgain}
-            remainingCount={remainingCount}
+            onContinue={continueFromWinner}
           />
         )}
       </AnimatePresence>
@@ -680,12 +677,10 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
 
 function WinnerOverlay({
   winner,
-  onAgain,
-  remainingCount,
+  onContinue,
 }: {
   winner: string;
-  onAgain: () => void;
-  remainingCount: number;
+  onContinue: () => void;
 }) {
   return (
     <motion.div
@@ -731,14 +726,15 @@ function WinnerOverlay({
           Вам слово!
         </p>
 
-        <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
-          <Button
-            onClick={onAgain}
-            className="bg-gradient-to-b from-amber-400 to-amber-600 font-bold text-[#1a0f0a] hover:from-amber-300 hover:to-amber-500"
+        {/* Continue arrow */}
+        <div className="mt-8 flex justify-center">
+          <button
+            onClick={onContinue}
+            className="group flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-b from-amber-400 to-amber-600 text-[#1a0f0a] shadow-lg shadow-amber-900/40 transition hover:from-amber-300 hover:to-amber-500 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-amber-400/50"
+            aria-label="Продолжить"
           >
-            <RotateCcw className="mr-1 h-4 w-4" />
-            {remainingCount === 1 ? "Последний тост!" : "Крутить снова"}
-          </Button>
+            <ChevronRight className="h-7 w-7 transition-transform group-hover:translate-x-0.5" />
+          </button>
         </div>
       </motion.div>
     </motion.div>
