@@ -31,16 +31,16 @@ const LICENSE_PUBLIC_KEY_PEM = loadPublicKey();
 function normalizeKey(raw) {
   const clean = raw.toString().toUpperCase().replace(/[^A-Z0-9]/g, "");
 
-  // Keys are always prefixed with TOAST followed by 16 alphanumeric characters.
-  let body = clean;
-  if (body.startsWith("TOAST")) {
-    body = body.slice(5);
-  }
-  if (body.length !== 16) {
+  // Supported key formats: PREFIX-XXXX-XXXX-XXXX-XXXX where PREFIX is 2-6 letters
+  // and the body is exactly 16 alphanumeric characters.
+  const match = clean.match(/^([A-Z]{2,6})([A-Z0-9]{16})$/);
+  if (!match) {
     return "";
   }
+  const prefix = match[1];
+  const body = match[2];
   const groups = body.match(/.{1,4}/g) || [];
-  return `TOAST-${groups.join("-")}`;
+  return `${prefix}-${groups.join("-")}`;
 }
 
 function hashFingerprint(raw) {
