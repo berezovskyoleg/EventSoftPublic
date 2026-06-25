@@ -59,7 +59,7 @@
     fetch('/api/releases/latest?app=musicbingo')
       .then(r => r.json())
       .then(data => {
-        if(data.mac) document.getElementById('mac').href = data.mac;
+        if(data.macos) document.getElementById('mac').href = data.macos;
         if(data.windows) document.getElementById('win').href = data.windows;
       })
       .catch(() => {});

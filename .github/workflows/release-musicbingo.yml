@@ -113,10 +113,22 @@ jobs:
           ssh-private-key: ${{ secrets.EVENTHUNT_SSH_KEY }}
 
       - name: Create server dirs
-        run: ssh -o StrictHostKeyChecking=no root@soft.eventhunt.ru 'mkdir -p /opt/eventhunt-license-server/public/musicbingo /opt/eventhunt-license-server/releases'
+        run: ssh -o StrictHostKeyChecking=no root@soft.eventhunt.ru 'mkdir -p /opt/eventhunt-license-server/public/musicbingo /opt/eventhunt-license-server/releases/musicbingo'
 
       - name: Upload landing page
         run: scp -o StrictHostKeyChecking=no -r apps/musicbingo/public/musicbingo root@soft.eventhunt.ru:/opt/eventhunt-license-server/public/
 
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ github.event.inputs.version || github.ref_name }}"
+          mkdir -p musicbingo-releases
+          cd musicbingo-releases
+          gh release download "$VERSION" --repo ${{ github.repository }} --pattern '*.dmg' --pattern '*.exe' --pattern '*.msi'
+
+      - name: Upload release binaries
+        run: scp -o StrictHostKeyChecking=no musicbingo-releases/* root@soft.eventhunt.ru:/opt/eventhunt-license-server/releases/musicbingo/
+
       - name: Restart license server
-        run: ssh -o StrictHostKeyChecking=no root@soft.eventhunt.ru 'cd /opt/eventhunt-license-server && docker-compose restart || true'
+        run: ssh -o StrictHostKeyChecking=no root@soft.eventhunt.ru 'cd /opt/eventhunt-license-server && docker compose restart || true'

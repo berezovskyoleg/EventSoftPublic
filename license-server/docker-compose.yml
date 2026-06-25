@@ -10,6 +10,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./releases:/app/releases
+      - ./public:/app/public
     environment:
       - NODE_ENV=production
       - PORT=3000
