@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="1240" viewBox="0 0 1240 1240">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2a1810"/>
+      <stop offset="100%" stop-color="#1a0f0a"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+  <rect width="1240" height="1240" rx="280" fill="url(#bg)"/>
+  <g transform="translate(620, 620)">
+    <!-- wine glass filled -->
+    <path d="M-160 -220 C-160 -80 -100 60 0 60 C100 60 160 -80 160 -220 L160 -260 L-160 -260 Z" fill="url(#glass)"/>
+    <rect x="-28" y="60" width="56" height="240" rx="8" fill="url(#glass)"/>
+    <rect x="-100" y="300" width="200" height="40" rx="20" fill="url(#glass)"/>
+    <!-- highlight -->
+    <ellipse cx="-70" cy="-140" rx="30" ry="55" fill="#fff" opacity="0.25"/>
+  </g>
+</svg>

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { KeyRound, Loader2, Lock, Music } from "lucide-react";
+import { KeyRound, Loader2, Lock } from "lucide-react";
+import { MusicBingoLogo } from "./logo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,7 +67,7 @@ export function LicenseGate({ onUnlocked }: LicenseGateProps) {
               transition={{ type: "spring", stiffness: 200, damping: 12 }}
               className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-400 to-pink-500 shadow-lg shadow-indigo-900/50"
             >
-              <Music className="h-10 w-10 text-[#0f0f13]" />
+              <MusicBingoLogo className="h-10 w-10" />
             </motion.div>
             <h1 className="bg-gradient-to-b from-indigo-200 to-pink-300 bg-clip-text text-3xl font-black tracking-tight text-transparent sm:text-4xl">
               MusicBingo

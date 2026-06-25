@@ -13,7 +13,15 @@ import {
   Trash2,
   Upload,
   Users,
+  QrCode,
+  Settings2,
+  ListMusic,
+  Gamepad2,
+  Info,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
+import { MusicBingoLogo } from "./logo";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -90,6 +98,8 @@ export function MusicBingoHost({ licenseKey, onLogout }: HostProps) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importTarget, setImportTarget] = useState<number | null>(null);
+  const [dropTarget, setDropTarget] = useState<number | null>(null);
+  const [showHowTo, setShowHowTo] = useState(true);
 
   useEffect(() => {
     loadServerUrl();
@@ -216,30 +226,49 @@ export function MusicBingoHost({ licenseKey, onLogout }: HostProps) {
     fileInputRef.current?.click();
   }
 
-  async function handleFilesSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files;
-    if (!files || importTarget == null) return;
+  function handleDragOver(e: React.DragEvent, id: number) {
+    e.preventDefault();
+    setDropTarget(id);
+  }
 
-    const payload = Array.from(files).map((f) => ({
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    setDropTarget(null);
+  }
+
+  async function handleDrop(e: React.DragEvent, id: number) {
+    e.preventDefault();
+    setDropTarget(null);
+    const files = e.dataTransfer.files;
+    if (!files.length) return;
+    await uploadFiles(id, Array.from(files));
+  }
+
+  async function uploadFiles(id: number, files: File[]) {
+    const payload = files.map((f) => ({
       path: (f as unknown as { path?: string }).path || URL.createObjectURL(f),
       title: f.name.replace(/\.[^/.]+$/, ""),
       artist: "",
       duration_seconds: 30,
     }));
-
     try {
-      await importTracks(importTarget, payload);
-      toast({ title: `Импортировано ${payload.length} треков` });
+      await importTracks(id, payload);
+      toast({ title: `Загружено ${payload.length} песен` });
       await loadPlaylists();
     } catch (err) {
       toast({
-        title: "Ошибка импорта",
+        title: "Ошибка загрузки",
         description: err instanceof Error ? err.message : "",
         variant: "destructive",
       });
-    } finally {
-      e.target.value = "";
     }
+  }
+
+  async function handleFilesSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || importTarget == null) return;
+    await uploadFiles(importTarget, Array.from(files));
+    e.target.value = "";
   }
 
   async function handleStartRound() {
@@ -338,7 +367,7 @@ export function MusicBingoHost({ licenseKey, onLogout }: HostProps) {
         <header className="flex flex-col gap-4 rounded-2xl border border-indigo-700/30 bg-[#1a1a24] p-5 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-pink-500">
-              <Music className="h-6 w-6 text-white" />
+              <MusicBingoLogo className="h-7 w-7 text-white" />
             </div>
             <div>
               <h1 className="text-xl font-bold">MusicBingo</h1>
@@ -363,82 +392,147 @@ export function MusicBingoHost({ licenseKey, onLogout }: HostProps) {
 
         <Tabs value={tab} onValueChange={setTab} className="space-y-4">
           <TabsList className="bg-[#1a1a24]">
-            <TabsTrigger value="game">Игра</TabsTrigger>
-            <TabsTrigger value="playlists">Плейлисты</TabsTrigger>
-            <TabsTrigger value="settings">Настройки</TabsTrigger>
+            <TabsTrigger value="game" className="gap-2">
+              <Gamepad2 className="h-4 w-4" />
+              Игра
+            </TabsTrigger>
+            <TabsTrigger value="playlists" className="gap-2">
+              <ListMusic className="h-4 w-4" />
+              Плейлисты
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="gap-2">
+              <Settings2 className="h-4 w-4" />
+              Настройки
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="game" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card className="border-indigo-700/30 bg-[#1a1a24] text-indigo-50">
+            {/* Step-by-step status + invite */}
+            <div className="grid gap-4 lg:grid-cols-3">
+              <Card className="border-indigo-700/30 bg-[#1a1a24] text-indigo-50 lg:col-span-2">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm uppercase tracking-wider text-indigo-200/70">
-                    Управление раундом
+                  <CardTitle className="flex items-center gap-2 text-sm uppercase tracking-wider text-indigo-200/70">
+                    <Gamepad2 className="h-4 w-4" />
+                    {gameState?.phase === "playing"
+                      ? `Раунд ${gameState?.round.round_number} идёт`
+                      : gameState?.phase === "finished"
+                        ? "Игра завершена"
+                        : "Подготовка к игре"}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Паттерн</Label>
-                    <Select value={currentPattern} onValueChange={setCurrentPattern}>
-                      <SelectTrigger className="bg-[#0f0f13] border-indigo-700/50">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PATTERNS.map((p) => (
-                          <SelectItem key={p.value} value={p.value}>
-                            {p.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <CardContent className="space-y-4">
+                  {/* Current track display */}
+                  <div className="rounded-xl border border-indigo-700/30 bg-[#0f0f13] p-4">
+                    {activeTrack ? (
+                      <div className="space-y-1">
+                        <div className="text-xs uppercase tracking-wider text-indigo-200/50">Сейчас играет</div>
+                        <div className="text-2xl font-bold">{activeTrack.title}</div>
+                        <div className="text-indigo-200/70">{activeTrack.artist}</div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3 text-indigo-200/50">
+                        <Music className="h-5 w-5" />
+                        <span>Трек ещё не запущен</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Номер раунда</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={roundNumber}
-                      onChange={(e) => setRoundNumber(Number(e.target.value))}
-                      className="bg-[#0f0f13] border-indigo-700/50"
-                    />
+
+                  {/* Quick controls */}
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Паттерн победы</Label>
+                      <Select value={currentPattern} onValueChange={setCurrentPattern}>
+                        <SelectTrigger className="bg-[#0f0f13] border-indigo-700/50">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PATTERNS.map((p) => (
+                            <SelectItem key={p.value} value={p.value}>
+                              {p.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Номер раунда</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={roundNumber}
+                        onChange={(e) => setRoundNumber(Number(e.target.value))}
+                        className="bg-[#0f0f13] border-indigo-700/50"
+                      />
+                    </div>
                   </div>
-                  <Button onClick={handleStartRound} className="w-full bg-indigo-600 hover:bg-indigo-500">
-                    <Play className="mr-2 h-4 w-4" />
-                    Начать раунд
-                  </Button>
-                  <Button onClick={handleNextTrack} variant="secondary" className="w-full">
-                    <SkipForward className="mr-2 h-4 w-4" />
-                    Следующий трек
-                  </Button>
-                  <Button onClick={handleEndRound} variant="outline" className="w-full border-indigo-700/50">
-                    Завершить раунд
-                  </Button>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button onClick={handleStartRound} className="bg-indigo-600 hover:bg-indigo-500">
+                      <Play className="mr-2 h-4 w-4" />
+                      Начать раунд
+                    </Button>
+                    <Button onClick={handleNextTrack} variant="secondary">
+                      <SkipForward className="mr-2 h-4 w-4" />
+                      Следующий трек
+                    </Button>
+                    <Button onClick={handleEndRound} variant="outline" className="border-indigo-700/50">
+                      Завершить раунд
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card className="border-indigo-700/30 bg-[#1a1a24] text-indigo-50 md:col-span-2">
+              {/* Invite card with QR */}
+              <Card className="border-indigo-700/30 bg-[#1a1a24] text-indigo-50">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm uppercase tracking-wider text-indigo-200/70">
-                    Сейчас играет
+                  <CardTitle className="flex items-center gap-2 text-sm uppercase tracking-wider text-indigo-200/70">
+                    <QrCode className="h-4 w-4" />
+                    Пригласить игроков
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  {activeTrack ? (
-                    <div className="space-y-2">
-                      <div className="text-2xl font-bold">{activeTrack.title}</div>
-                      <div className="text-indigo-200/70">{activeTrack.artist}</div>
-                      <div className="text-xs text-indigo-200/40">
-                        Фаза: {gameState?.phase} | Раунд: {gameState?.round.round_number} |{" "}
-                        Паттерн: {gameState?.round.pattern ?? "—"}
-                      </div>
+                <CardContent className="space-y-4">
+                  {qrSvg ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <img src={qrSvg} alt="QR" className="h-44 w-44 rounded-xl bg-white p-2" />
+                      <p className="text-center text-xs text-indigo-200/60">
+                        Отсканируйте QR или перейдите по ссылке, чтобы получить карточку бинго
+                      </p>
                     </div>
                   ) : (
-                    <div className="text-indigo-200/50">Трек ещё не запущен</div>
+                    <div className="flex h-44 items-center justify-center text-indigo-200/50">Загрузка QR...</div>
+                  )}
+
+                  {serverUrl && (
+                    <div className="space-y-2">
+                      <Label className="text-xs">Ссылка для игроков</Label>
+                      <div className="flex items-center gap-2 rounded-lg bg-[#0f0f13] px-3 py-2 text-sm">
+                        <span className="flex-1 truncate text-indigo-200/70">{serverUrl}</span>
+                        <Button variant="ghost" size="icon" onClick={copyUrl} className="h-7 w-7 shrink-0">
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {showHowTo && (
+                    <div className="rounded-lg border border-indigo-700/30 bg-[#0f0f13] p-3 text-xs text-indigo-200/70">
+                      <div className="mb-2 flex items-center gap-1.5 font-semibold text-indigo-200">
+                        <Info className="h-3.5 w-3.5" />
+                        Как играют гости
+                      </div>
+                      <ol className="list-decimal space-y-1 pl-4">
+                        <li>Открывают ссылку на телефоне</li>
+                        <li>Вводят код комнаты: <span className="font-mono text-indigo-300">{roomCode || "—"}</span></li>
+                        <li>Отмечают услышанные песни на карточке</li>
+                        <li>Кричат «Бинго!» — вы проверяете здесь</li>
+                      </ol>
+                    </div>
                   )}
                 </CardContent>
               </Card>
             </div>
 
+            {/* Players */}
             <Card className="border-indigo-700/30 bg-[#1a1a24] text-indigo-50">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-sm uppercase tracking-wider text-indigo-200/70">
@@ -448,7 +542,13 @@ export function MusicBingoHost({ licenseKey, onLogout }: HostProps) {
               </CardHeader>
               <CardContent>
                 {players.length === 0 ? (
-                  <div className="text-indigo-200/50">Пока никто не подключился</div>
+                  <div className="flex flex-col items-center gap-3 py-6 text-center text-indigo-200/50">
+                    <Users className="h-10 w-10 opacity-30" />
+                    <div>
+                      <p className="font-medium text-indigo-200/70">Пока никто не подключился</p>
+                      <p className="text-sm">Поделитесь QR-кодом или ссылкой выше, чтобы игроки присоединились</p>
+                    </div>
+                  </div>
                 ) : (
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {players.map((p) => (
@@ -473,7 +573,9 @@ export function MusicBingoHost({ licenseKey, onLogout }: HostProps) {
                           </Button>
                         )}
                         {p.bingo_confirmed && (
-                          <span className="text-sm font-bold text-emerald-400">Бинго!</span>
+                          <span className="flex items-center gap-1 text-sm font-bold text-emerald-400">
+                            <CheckCircle2 className="h-4 w-4" /> Бинго!
+                          </span>
                         )}
                       </div>
                     ))}
@@ -484,11 +586,23 @@ export function MusicBingoHost({ licenseKey, onLogout }: HostProps) {
           </TabsContent>
 
           <TabsContent value="playlists" className="space-y-4">
+            {/* Empty state helper */}
+            {playlists.length === 0 && (
+              <div className="rounded-xl border border-indigo-700/30 bg-[#1a1a24] p-6 text-center">
+                <ListMusic className="mx-auto mb-3 h-10 w-10 text-indigo-400/40" />
+                <h3 className="text-lg font-semibold text-indigo-100">Создайте первый плейлист</h3>
+                <p className="mt-1 text-sm text-indigo-200/60">
+                  Введите название ниже, затем перетащите в него mp3-файлы или нажмите «Загрузить песни»
+                </p>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <Input
                 placeholder="Название нового плейлиста"
                 value={newPlaylistName}
                 onChange={(e) => setNewPlaylistName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCreatePlaylist()}
                 className="bg-[#1a1a24] border-indigo-700/50"
               />
               <Button onClick={handleCreatePlaylist}>
@@ -500,8 +614,15 @@ export function MusicBingoHost({ licenseKey, onLogout }: HostProps) {
             {playlists.map((pl) => (
               <Card key={pl.id} className="border-indigo-700/30 bg-[#1a1a24] text-indigo-50">
                 <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center justify-between text-base">
-                    <span>{pl.name}</span>
+                  <CardTitle className="flex flex-wrap items-center justify-between gap-3 text-base">
+                    <div className="flex items-center gap-2">
+                      <span>{pl.name}</span>
+                      {selectedPlaylistId === pl.id && (
+                        <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-300">
+                          Выбран для игры
+                        </span>
+                      )}
+                    </div>
                     <div className="flex gap-2">
                       <Button
                         variant={selectedPlaylistId === pl.id ? "default" : "outline"}
@@ -512,7 +633,7 @@ export function MusicBingoHost({ licenseKey, onLogout }: HostProps) {
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => openImport(pl.id)}>
                         <Upload className="mr-2 h-4 w-4" />
-                        Импорт
+                        Загрузить песни
                       </Button>
                       <Button
                         variant="ghost"
@@ -525,30 +646,60 @@ export function MusicBingoHost({ licenseKey, onLogout }: HostProps) {
                     </div>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-3">
+                  {/* Drag-and-drop zone */}
+                  <div
+                    onDragOver={(e) => handleDragOver(e, pl.id)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, pl.id)}
+                    onClick={() => openImport(pl.id)}
+                    className={`cursor-pointer rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+                      dropTarget === pl.id
+                        ? "border-indigo-400 bg-indigo-500/10"
+                        : "border-indigo-700/40 bg-[#0f0f13] hover:border-indigo-500/50 hover:bg-indigo-500/5"
+                    }`}
+                  >
+                    <Upload className="mx-auto mb-2 h-6 w-6 text-indigo-400/70" />
+                    <p className="text-sm font-medium text-indigo-200/80">
+                      Перетащите mp3-файлы сюда
+                    </p>
+                    <p className="mt-1 text-xs text-indigo-200/50">или нажмите, чтобы выбрать файлы</p>
+                  </div>
+
                   {tracks[pl.id]?.length ? (
-                    <ul className="space-y-1">
-                      {tracks[pl.id].map((t) => (
-                        <li
-                          key={t.id}
-                          className="flex items-center justify-between rounded-md bg-[#0f0f13] px-3 py-2 text-sm"
-                        >
-                          <span>
-                            {t.title} — {t.artist}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteTrack(t.id)}
-                            className="h-6 w-6 text-rose-400"
+                    <div>
+                      <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-indigo-200/50">
+                        Треков: {tracks[pl.id].length}
+                      </div>
+                      <ul className="max-h-64 space-y-1 overflow-y-auto pr-1">
+                        {tracks[pl.id].map((t, idx) => (
+                          <li
+                            key={t.id}
+                            className="flex items-center justify-between rounded-md bg-[#0f0f13] px-3 py-2 text-sm"
                           >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="shrink-0 text-xs text-indigo-200/40">{idx + 1}.</span>
+                              <span className="truncate">
+                                {t.title} {t.artist ? `— ${t.artist}` : ""}
+                              </span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteTrack(t.id)}
+                              className="h-6 w-6 shrink-0 text-rose-400"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   ) : (
-                    <div className="text-sm text-indigo-200/50">Нет треков</div>
+                    <div className="flex items-center gap-2 text-sm text-indigo-200/50">
+                      <AlertCircle className="h-4 w-4" />
+                      В этом плейлисте пока нет песен
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -601,15 +752,13 @@ export function MusicBingoHost({ licenseKey, onLogout }: HostProps) {
             <Card className="border-indigo-700/30 bg-[#1a1a24] text-indigo-50">
               <CardHeader>
                 <CardTitle className="text-sm uppercase tracking-wider text-indigo-200/70">
-                  QR-код для подключения
+                  Управление игрой
                 </CardTitle>
               </CardHeader>
-              <CardContent className="flex flex-col items-center gap-4">
-                {qrSvg ? (
-                  <img src={qrSvg} alt="QR" className="h-48 w-48 rounded-xl bg-white p-2" />
-                ) : (
-                  <div className="text-indigo-200/50">Загрузка QR...</div>
-                )}
+              <CardContent className="space-y-4">
+                <p className="text-sm text-indigo-200/70">
+                  Сброс вернёт игру в начальное состояние. Все карточки игроков будут удалены.
+                </p>
                 <Button variant="outline" onClick={handleResetGame} className="border-rose-700/50 text-rose-300">
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Сбросить игру
