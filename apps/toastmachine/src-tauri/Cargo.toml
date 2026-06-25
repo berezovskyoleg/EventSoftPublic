@@ -30,9 +30,5 @@ jsonwebtoken = "9"
 name = "toast-slot"
 path = "src/main.rs"
 
-[[bin]]
-name = "admin"
-path = "src/bin/admin.rs"
-
 [profile.release]
 opt-level = 2

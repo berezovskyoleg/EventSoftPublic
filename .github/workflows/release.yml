@@ -44,17 +44,6 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      - name: Build universal admin CLI
-        run: |
-          rustup target add x86_64-apple-darwin aarch64-apple-darwin
-          cargo build --release --manifest-path src-tauri/Cargo.toml --bin admin --target x86_64-apple-darwin
-          cargo build --release --manifest-path src-tauri/Cargo.toml --bin admin --target aarch64-apple-darwin
-          mkdir -p src-tauri/target/universal-apple-darwin/release
-          lipo -create \
-            src-tauri/target/x86_64-apple-darwin/release/admin \
-            src-tauri/target/aarch64-apple-darwin/release/admin \
-            -output src-tauri/target/universal-apple-darwin/release/admin
-
       - name: Build macOS universal bundle
         run: npm run tauri:build -- --target universal-apple-darwin
 
@@ -65,7 +54,6 @@ jobs:
           path: |
             apps/toastmachine/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
             apps/toastmachine/src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
-            apps/toastmachine/src-tauri/target/universal-apple-darwin/release/admin
 
   build-windows:
     runs-on: windows-latest
@@ -97,9 +85,6 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-      - name: Build Windows admin CLI
-        run: cargo build --release --manifest-path src-tauri/Cargo.toml --bin admin --target ${{ matrix.target }}
-
       - name: Build Windows bundle
         run: npm run tauri:build -- --target ${{ matrix.target }}
 
@@ -110,7 +95,6 @@ jobs:
           path: |
             apps/toastmachine/src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi
             apps/toastmachine/src-tauri/target/${{ matrix.target }}/release/bundle/nsis/*.exe
-            apps/toastmachine/src-tauri/target/${{ matrix.target }}/release/admin.exe
 
   release:
     needs: [build-macos, build-windows]

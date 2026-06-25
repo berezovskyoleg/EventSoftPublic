@@ -10,7 +10,6 @@ import {
   Sparkles,
   Trophy,
   Wine,
-  PencilLine,
   Volume2,
   VolumeX,
   Check,
@@ -214,13 +213,6 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
     setTimeout(() => spin(), 250);
   }
 
-  function editList() {
-    sound.uiClick();
-    setShowWinner(false);
-    setWinner(null);
-    setEditing(true);
-  }
-
   function startNewRound() {
     sound.uiClick();
     setSpoken([]);
@@ -281,15 +273,6 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
               </span>
             </Button>
             <SoundSettings />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={editList}
-              className="border-amber-700/40 bg-transparent text-amber-200 hover:bg-amber-900/30 hover:text-amber-100"
-            >
-              <PencilLine className="h-4 w-4" />
-              <span className="ml-1 hidden sm:inline">Список</span>
-            </Button>
             <Button
               variant="ghost"
               size="sm"
