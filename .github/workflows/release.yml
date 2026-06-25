@@ -121,3 +121,37 @@ jobs:
           name: ToastMachine ${{ github.event.inputs.version || github.ref_name }}
           files: artifacts/**/*
           generate_release_notes: true
+
+  deploy-site:
+    needs: release
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.EVENTHUNT_SSH_KEY }}
+
+      - name: Create server dirs
+        run: ssh -o StrictHostKeyChecking=no root@soft.eventhunt.ru 'mkdir -p /opt/eventhunt-license-server/public/toastmachine /opt/eventhunt-license-server/releases/toastmachine'
+
+      - name: Upload landing page
+        run: scp -o StrictHostKeyChecking=no -r apps/toastmachine/public/toastmachine root@soft.eventhunt.ru:/opt/eventhunt-license-server/public/
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ github.event.inputs.version || github.ref_name }}"
+          mkdir -p toastmachine-releases
+          cd toastmachine-releases
+          gh release download "$VERSION" --repo ${{ github.repository }} --pattern '*.dmg' --pattern '*.exe' --pattern '*.msi'
+
+      - name: Upload release binaries
+        run: scp -o StrictHostKeyChecking=no toastmachine-releases/* root@soft.eventhunt.ru:/opt/eventhunt-license-server/releases/toastmachine/
+
+      - name: Restart license server
+        run: ssh -o StrictHostKeyChecking=no root@soft.eventhunt.ru 'cd /opt/eventhunt-license-server && docker compose restart || true'
