@@ -6,8 +6,32 @@ const router = express.Router();
 const RELEASES_DIR = process.env.RELEASES_DIR || "/app/releases";
 
 function parseVersion(filename) {
-  const match = filename.match(/_(\d+\.\d+\.\d+(_\w+)?)_[\w\.]+\.(dmg|msi|exe)/);
+  const match = filename.match(/_(\d+\.\d+\.\d+(_\w+)?)_[\w\.\-]+\.(dmg|msi|exe)/);
   return match ? match[1] : null;
+}
+
+function versionTuple(version) {
+  const parts = (version || "").split(".")
+    .map((p) => parseInt(p.replace(/[^0-9].*$/, ""), 10) || 0);
+  while (parts.length < 3) parts.push(0);
+  return parts.slice(0, 3);
+}
+
+function compareVersion(a, b) {
+  const ta = versionTuple(a);
+  const tb = versionTuple(b);
+  for (let i = 0; i < 3; i++) {
+    if (ta[i] !== tb[i]) return ta[i] - tb[i];
+  }
+  return 0;
+}
+
+function latestFile(files) {
+  return files
+    .map((f) => ({ file: f, version: parseVersion(f) }))
+    .filter((x) => x.version)
+    .sort((a, b) => compareVersion(a.version, b.version))
+    .pop()?.file || null;
 }
 
 function findLatest(dir) {
@@ -15,14 +39,8 @@ function findLatest(dir) {
     return { version: null, macos: null, windows: null };
   }
   const files = fs.readdirSync(dir);
-  const macos = files
-    .filter((f) => f.endsWith(".dmg"))
-    .sort()
-    .pop();
-  const windows = files
-    .filter((f) => f.endsWith(".msi") || f.endsWith(".exe"))
-    .sort()
-    .pop();
+  const macos = latestFile(files.filter((f) => f.endsWith(".dmg")));
+  const windows = latestFile(files.filter((f) => f.endsWith(".msi") || f.endsWith(".exe")));
 
   const version = parseVersion(macos || windows || "") || null;
   return {

@@ -11,6 +11,7 @@ services:
       - ./data:/app/data
       - ./releases:/app/releases
       - ./public:/app/public
+      - ./src:/app/src
     environment:
       - NODE_ENV=production
       - PORT=3000
