@@ -14,6 +14,11 @@ import {
   VolumeX,
   Check,
   PartyPopper,
+  X,
+  Plus,
+  UserX,
+  UserPlus,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -70,6 +75,11 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
   // picked again until the user starts a new round.
   const [spoken, setSpoken] = useState<string[]>([]);
   const [allDone, setAllDone] = useState(false);
+
+  // Manage-list drawer state
+  const [manageOpen, setManageOpen] = useState(false);
+  const [manageRaw, setManageRaw] = useState("");
+  const [quickName, setQuickName] = useState("");
 
   const [muted, setMuted] = useState(false);
 
@@ -221,6 +231,84 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
     setWinner(null);
     currentWinnerIdxRef.current = 0;
     requestAnimationFrame(() => resetReelTo(0));
+  }
+
+  // Open the list-management drawer. Pre-fill textarea with current active pool.
+  function openManage() {
+    if (spinning) return;
+    sound.uiClick();
+    setManageRaw(names.join("\n"));
+    setQuickName("");
+    setManageOpen(true);
+  }
+
+  function closeManage() {
+    sound.uiClick();
+    setManageOpen(false);
+  }
+
+  // Save the edited list. Keep spoken entries that are still present; drop ones
+  // that were removed. New names become part of the remaining pool.
+  function saveManage() {
+    const parsed = parseNames(manageRaw);
+    if (parsed.length < 1) {
+      // keep at least one guest so the game doesn't break
+      return;
+    }
+    const nextNames = parsed;
+    const nextSpoken = spoken.filter((n) => nextNames.includes(n));
+    setNames(nextNames);
+    setSpoken(nextSpoken);
+    setRawNames(nextNames.join("\n"));
+    setManageOpen(false);
+    setShowWinner(false);
+    setWinner(null);
+    setAllDone(false);
+    currentWinnerIdxRef.current = 0;
+    requestAnimationFrame(() => resetReelTo(0));
+  }
+
+  // Remove a name from the active pool entirely.
+  function removeName(name: string) {
+    const next = names.filter((n) => n !== name);
+    if (next.length < 1) return; // prevent empty pool
+    setNames(next);
+    setSpoken((prev) => prev.filter((n) => n !== name));
+    setRawNames(next.join("\n"));
+    setManageRaw(next.join("\n"));
+    if (winner === name) {
+      setWinner(null);
+      setShowWinner(false);
+    }
+    if (next.length === spoken.filter((n) => next.includes(n)).length) {
+      setAllDone(true);
+    }
+  }
+
+  // Return a spoken guest back to the remaining pool.
+  function returnName(name: string) {
+    setSpoken((prev) => prev.filter((n) => n !== name));
+    setAllDone(false);
+  }
+
+  // Quick-add a new guest from the drawer input.
+  function addQuickName() {
+    const parsed = parseNames(quickName);
+    if (!parsed.length) return;
+    const next = [...names];
+    let changed = false;
+    for (const n of parsed) {
+      if (!next.includes(n)) {
+        next.push(n);
+        changed = true;
+      }
+    }
+    if (!changed) return;
+    setNames(next);
+    setRawNames(next.join("\n"));
+    setManageRaw(next.join("\n"));
+    setQuickName("");
+    setAllDone(false);
   }
 
   function toggleMute() {
@@ -481,7 +569,7 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
 
           {/* Progress: who has spoken / who is left */}
           {!editing && names.length > 0 && (
-            <div className="w-full max-w-3xl">
+            <div className="w-full max-w-3xl space-y-3">
               {/* progress bar */}
               <div className="mb-2 flex items-center justify-between text-xs text-amber-200/60">
                 <span className="flex items-center gap-1.5">
@@ -525,6 +613,18 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
                   ))}
                 </div>
               )}
+
+              {/* manage list button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openManage}
+                disabled={spinning}
+                className="border-amber-700/40 bg-transparent text-amber-200 hover:bg-amber-900/30 hover:text-amber-100"
+              >
+                <Pencil className="mr-1 h-4 w-4" />
+                Изменить список
+              </Button>
             </div>
           )}
         </main>
@@ -552,6 +652,25 @@ export function SlotMachine({ licenseKey, onLogout }: SlotMachineProps) {
           <RoundCompleteOverlay
             spoken={spoken}
             onNewRound={startNewRound}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Manage-list drawer */}
+      <AnimatePresence>
+        {manageOpen && (
+          <ManageDrawer
+            raw={manageRaw}
+            setRaw={setManageRaw}
+            spoken={spoken}
+            remaining={remaining}
+            quickName={quickName}
+            setQuickName={setQuickName}
+            onClose={closeManage}
+            onSave={saveManage}
+            onRemove={removeName}
+            onReturn={returnName}
+            onAdd={addQuickName}
           />
         )}
       </AnimatePresence>
@@ -695,6 +814,176 @@ function RoundCompleteOverlay({
           >
             <RotateCcw className="mr-1 h-4 w-4" />
             Новый раунд
+          </Button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function ManageDrawer({
+  raw,
+  setRaw,
+  spoken,
+  remaining,
+  quickName,
+  setQuickName,
+  onClose,
+  onSave,
+  onRemove,
+  onReturn,
+  onAdd,
+}: {
+  raw: string;
+  setRaw: (v: string) => void;
+  spoken: string[];
+  remaining: string[];
+  quickName: string;
+  setQuickName: (v: string) => void;
+  onClose: () => void;
+  onSave: () => void;
+  onRemove: (name: string) => void;
+  onReturn: (name: string) => void;
+  onAdd: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="absolute inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", stiffness: 260, damping: 24 }}
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-amber-700/40 bg-gradient-to-b from-[#2a1810] to-[#1a0f0a] p-5 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-black text-amber-200">Управление списком</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="text-amber-200/60 hover:bg-amber-900/30 hover:text-amber-100"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+
+        <div className="space-y-5">
+          {/* quick add */}
+          <div className="rounded-xl border border-amber-700/40 bg-[#241710]/60 p-4">
+            <Label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-amber-200/70">
+              Быстро добавить гостя
+            </Label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={quickName}
+                onChange={(e) => setQuickName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") onAdd();
+                }}
+                placeholder="Имя Фамилия"
+                className="flex-1 rounded-lg border border-amber-700/40 bg-[#1a0f0a] px-3 py-2 text-sm text-amber-100 placeholder:text-amber-700/40 focus:outline-none focus:ring-1 focus:ring-amber-500"
+              />
+              <Button
+                onClick={onAdd}
+                className="bg-amber-500 text-[#1a0f0a] hover:bg-amber-400"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* textarea editor */}
+          <div className="rounded-xl border border-amber-700/40 bg-[#241710]/60 p-4">
+            <Label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-amber-200/70">
+              Редактировать список
+            </Label>
+            <Textarea
+              value={raw}
+              onChange={(e) => setRaw(e.target.value)}
+              rows={6}
+              placeholder="Иван Смирнов\nМария Петрова\n..."
+              className="resize-none border-amber-700/40 bg-[#1a0f0a] font-mono text-sm text-amber-100 placeholder:text-amber-700/40 focus-visible:ring-amber-500"
+            />
+            <p className="mt-2 text-xs text-amber-200/50">
+              Удалите имя, чтобы убрать гостя из текущего раунда. Добавьте новое — оно появится в розыгрыше.
+            </p>
+          </div>
+
+          {/* remaining */}
+          {remaining.length > 0 && (
+            <div className="rounded-xl border border-amber-700/40 bg-[#241710]/60 p-4">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-amber-200/70">
+                Ещё не говорили ({remaining.length})
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {remaining.map((n) => (
+                  <span
+                    key={n}
+                    className="inline-flex items-center gap-1 rounded-full border border-amber-600/40 bg-amber-950/60 px-2.5 py-1 text-sm text-amber-100"
+                  >
+                    {n}
+                    <button
+                      onClick={() => onRemove(n)}
+                      title="Убрать из списка"
+                      className="ml-1 rounded-full p-0.5 text-amber-200/60 hover:bg-rose-500/20 hover:text-rose-400"
+                    >
+                      <UserX className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* spoken */}
+          {spoken.length > 0 && (
+            <div className="rounded-xl border border-emerald-700/30 bg-emerald-950/20 p-4">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-200/70">
+                Уже произнесли тост ({spoken.length})
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {spoken.map((n) => (
+                  <span
+                    key={n}
+                    className="inline-flex items-center gap-1 rounded-full border border-emerald-700/40 bg-emerald-950/40 px-2.5 py-1 text-sm text-emerald-100"
+                  >
+                    <Check className="h-3.5 w-3.5 text-emerald-400" />
+                    {n}
+                    <button
+                      onClick={() => onReturn(n)}
+                      title="Вернуть в розыгрыш"
+                      className="ml-1 rounded-full p-0.5 text-emerald-200/60 hover:bg-emerald-500/20 hover:text-emerald-300"
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 flex gap-3">
+          <Button
+            variant="outline"
+            onClick={onClose}
+            className="flex-1 border-amber-700/40 bg-transparent text-amber-200 hover:bg-amber-900/30 hover:text-amber-100"
+          >
+            Отмена
+          </Button>
+          <Button
+            onClick={onSave}
+            className="flex-1 bg-gradient-to-b from-amber-400 to-amber-600 font-bold text-[#1a0f0a] hover:from-amber-300 hover:to-amber-500"
+          >
+            Сохранить
           </Button>
         </div>
       </motion.div>
