@@ -43,7 +43,6 @@ jobs:
           name: musicbingo-macos-universal
           path: |
             apps/musicbingo/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
-            apps/musicbingo/src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
 
   build-windows:
     runs-on: windows-latest
