@@ -17,13 +17,16 @@ env:
 
 jobs:
   build-macos:
-    runs-on: [self-hosted, macOS]
+    runs-on: macos-latest
     defaults:
       run:
         working-directory: apps/musicbingo
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Install Rust targets
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
       - name: Install frontend dependencies
         run: npm install
@@ -43,7 +46,7 @@ jobs:
             apps/musicbingo/src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
 
   build-windows:
-    runs-on: [self-hosted, Windows]
+    runs-on: windows-latest
     defaults:
       run:
         working-directory: apps/musicbingo
