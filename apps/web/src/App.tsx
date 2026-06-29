@@ -1,4 +1,5 @@
 import { MusicBingoWeb } from "./apps/musicbingo";
+import { ToastMachineWeb } from "./apps/toastmachine";
 
 function App() {
   const path = window.location.pathname;
@@ -6,7 +7,7 @@ function App() {
     return <MusicBingoWeb />;
   }
   if (path.startsWith("/toastmachine/play")) {
-    return <div className="p-8 text-center">ToastMachine web скоро здесь</div>;
+    return <ToastMachineWeb />;
   }
   return (
     <div className="flex min-h-screen items-center justify-center p-4 text-center">
