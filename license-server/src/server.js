@@ -14,6 +14,7 @@ const {
   loginHandler,
   logoutHandler,
 } = require("./middleware/siteAuth");
+const { setupMusicBingoWSS } = require("./ws/musicbingo");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -59,6 +60,18 @@ app.get("/admin/*", (req, res) => {
   res.sendFile(path.join(__dirname, "..", "public", "admin", "index.html"));
 });
 
-app.listen(PORT, () => {
+// Web app SPA fallbacks for /play routes
+app.get("/toastmachine/play", (req, res) => {
+  res.sendFile(path.join(__dirname, "..", "public", "toastmachine", "play", "index.html"));
+});
+app.get("/musicbingo/play", (req, res) => {
+  res.sendFile(path.join(__dirname, "..", "public", "musicbingo", "play", "index.html"));
+});
+
+const http = require("http");
+const server = http.createServer(app);
+setupMusicBingoWSS(server);
+
+server.listen(PORT, () => {
   console.log(`License server listening on port ${PORT}`);
 });
