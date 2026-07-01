@@ -7,7 +7,6 @@ import { Select, SelectItem } from "../../components/ui/select";
 import { Label } from "../../components/ui/label";
 import { MusicBingoLogo } from "./logo";
 import { useRoom } from "./useRoom";
-import { generateCard } from "./cards";
 import { pickMusicFiles, pickMusicFolder, supportsDirectoryPicker } from "./fileAccess";
 import { loadPlaylists, savePlaylists } from "./storage";
 import type { Playlist, Track, HostConfig, PlayerPublic } from "./types";
@@ -144,15 +143,12 @@ export function MusicBingoHost() {
       type: "start_round",
       roundNumber,
       pattern,
+      trackPool: selectedPlaylist.tracks.map((t) => ({
+        id: t.id,
+        title: t.title,
+        artist: t.artist,
+      })),
     });
-    // Distribute cards to existing players.
-    if (players.length > 0) {
-      const cards = players.map((p) => ({
-        playerId: p.id,
-        cells: generateCard(selectedPlaylist.tracks),
-      }));
-      send({ type: "distribute_cards", cards });
-    }
   }
 
   function nextTrack() {

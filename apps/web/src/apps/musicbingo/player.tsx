@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/ca
 import { MusicBingoLogo } from "./logo";
 import { useRoom } from "./useRoom";
 import { checkPattern } from "./cards";
-import type { CardCell } from "./types";
 import { Trophy, Music } from "lucide-react";
 
 interface PlayerViewProps {
@@ -15,11 +14,10 @@ interface PlayerViewProps {
 export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
   const [name, setName] = React.useState("");
   const [joined, setJoined] = React.useState(false);
-  const [card, setCard] = React.useState<CardCell[] | null>(null);
   const [marked, setMarked] = React.useState<Set<string>>(new Set());
   const [claimSent, setClaimSent] = React.useState(false);
 
-  const { connected, error, roomState, bingoResult, send } = useRoom(
+  const { connected, error, roomState, card, bingoResult, send } = useRoom(
     "player",
     roomCode,
     joined ? name : undefined
@@ -29,28 +27,6 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
     if (!joined) return;
     send({ type: "set_name", name });
   }, [joined, name, send]);
-
-  React.useEffect(() => {
-    // Listen for card via a global handler attached to window? Simpler: re-implement message parsing.
-    // We already have card in useRoom but it's per-hook. Use a custom listener here.
-    const url =
-      window.location.protocol === "https:"
-        ? `wss://${window.location.host}/ws/musicbingo`
-        : `ws://${window.location.host}/ws/musicbingo`;
-    const ws = new WebSocket(`${url}?room=${encodeURIComponent(roomCode)}&role=player&name=${encodeURIComponent(name || "Игрок")}`);
-    ws.onmessage = (ev) => {
-      try {
-        const msg = JSON.parse(ev.data);
-        if (msg.type === "card") {
-          setCard(msg.card);
-        }
-        if (msg.type === "bingo_confirmed") {
-          // handled by useRoom
-        }
-      } catch {}
-    };
-    return () => ws.close();
-  }, [roomCode, name]);
 
   React.useEffect(() => {
     if (roomState.currentTrackId) {

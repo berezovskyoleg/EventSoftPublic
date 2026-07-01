@@ -17,6 +17,7 @@ class Room {
     this.currentTrackTitle = null;
     this.pattern = null;
     this.winners = [];
+    this.trackPool = []; // { id, title, artist }[]
   }
 
   broadcastToPlayers(message) {
@@ -51,6 +52,11 @@ class Room {
     this.players.set(id, player);
     this.hostSend({ type: "player_joined", player: this.playerPublic(player) });
     ws.send(JSON.stringify({ type: "joined", playerId: id, roomCode: this.code }));
+    // If a round is in progress and we know the track pool, generate a card immediately.
+    if (this.phase === "playing" && this.trackPool.length >= 25) {
+      player.card = generateCard(this.trackPool);
+      ws.send(JSON.stringify({ type: "card", card: player.card }));
+    }
     return player;
   }
 
@@ -93,6 +99,16 @@ class Room {
 
 function generateId() {
   return crypto.randomBytes(8).toString("hex");
+}
+
+function generateCard(trackPool) {
+  const shuffled = [...trackPool].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 25).map((t) => ({
+    trackId: t.id,
+    title: t.title,
+    artist: t.artist || "",
+    marked: false,
+  }));
 }
 
 function setupMusicBingoWSS(server) {
@@ -193,6 +209,9 @@ function handleHostMessage(room, ws, msg) {
       room.pattern = msg.pattern || room.pattern;
       room.currentTrackId = null;
       room.currentTrackTitle = null;
+      if (Array.isArray(msg.trackPool) && msg.trackPool.length >= 25) {
+        room.trackPool = msg.trackPool;
+      }
       // Reset player bingo claims for new round.
       for (const p of room.players.values()) {
         p.bingoClaimed = false;
@@ -211,7 +230,7 @@ function handleHostMessage(room, ws, msg) {
     case "track_started": {
       room.currentTrackId = msg.trackId;
       room.currentTrackTitle = msg.title;
-      room.broadcastToPlayers({
+      room.broadcastToAll({
         type: "track_started",
         trackId: msg.trackId,
         title: msg.title,
