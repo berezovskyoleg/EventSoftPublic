@@ -131,8 +131,13 @@ export function MusicBingoHost() {
   }
 
   function startRound() {
-    if (!selectedPlaylist || selectedPlaylist.tracks.length < 25) {
-      alert("Нужно минимум 25 треков в выбранном плейлисте");
+    console.log("startRound clicked", { selectedPlaylist, tracks: selectedPlaylist?.tracks.length, connected });
+    if (!selectedPlaylist) {
+      alert("Сначала выберите плейлист во вкладке 'Плейлисты'");
+      return;
+    }
+    if (selectedPlaylist.tracks.length < 25) {
+      alert(`Нужно минимум 25 треков в плейлисте, сейчас ${selectedPlaylist.tracks.length}`);
       return;
     }
     const queue = [...selectedPlaylist.tracks].sort(() => Math.random() - 0.5);
@@ -246,6 +251,21 @@ export function MusicBingoHost() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="rounded-xl border border-indigo-700/30 bg-[#0f0f13] p-4">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-sm text-indigo-200/70">
+                        {selectedPlaylist ? (
+                          <>
+                            Плейлист: <span className="font-semibold text-indigo-100">{selectedPlaylist.name}</span>
+                            <span className="ml-2 text-xs">({selectedPlaylist.tracks.length} треков)</span>
+                          </>
+                        ) : (
+                          <span className="text-rose-300">Плейлист не выбран</span>
+                        )}
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => setTab("playlists")}>
+                        <ListMusic className="mr-1 h-3 w-3" /> Выбрать
+                      </Button>
+                    </div>
                     {currentTrack ? (
                       <div className="space-y-2">
                         <div className="text-xs uppercase tracking-wider text-indigo-200/50">Сейчас играет</div>
@@ -284,7 +304,19 @@ export function MusicBingoHost() {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    <Button onClick={startRound}>
+                    <Button
+                      onClick={startRound}
+                      disabled={!selectedPlaylist || selectedPlaylist.tracks.length < 25 || !connected}
+                      title={
+                        !selectedPlaylist
+                          ? "Выберите плейлист"
+                          : selectedPlaylist.tracks.length < 25
+                          ? `Нужно минимум 25 треков (сейчас ${selectedPlaylist.tracks.length})`
+                          : !connected
+                          ? "Нет подключения"
+                          : ""
+                      }
+                    >
                       <Play className="mr-2 h-4 w-4" /> Начать раунд
                     </Button>
                     <Button onClick={nextTrack} variant="secondary">
