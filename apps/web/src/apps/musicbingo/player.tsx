@@ -51,7 +51,7 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
 
   if (!joined) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="flex h-screen w-full max-w-full items-center justify-center overflow-x-hidden p-4">
         <Card className="w-full max-w-sm">
           <CardHeader>
             <div className="mb-3 flex justify-center">
@@ -81,33 +81,35 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
 
   if (!connected) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4 text-indigo-100/70">
+      <div className="flex h-screen w-full max-w-full items-center justify-center overflow-x-hidden p-4 text-indigo-100/70">
         Подключение...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4 text-slate-50">
-      <div className="mx-auto max-w-md space-y-4">
-        <header className="flex items-center justify-between rounded-2xl border border-indigo-500/30 bg-slate-900 p-4 shadow-sm">
-          <div className="flex items-center gap-2">
-            <MusicBingoLogo className="h-6 w-6" />
-            <span className="font-bold text-slate-50">{name}</span>
-          </div>
-          <div className="text-xs font-medium text-slate-300/80">
-            {roomState.phase === "playing" ? `Раунд ${roomState.roundNumber}` : "Ожидание"}
+    <div className="flex h-screen w-full max-w-full flex-col overflow-x-hidden overflow-y-auto bg-slate-950 p-3 text-slate-50 sm:p-4">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-3">
+        <header className="shrink-0 rounded-2xl border border-indigo-500/30 bg-slate-900 p-3 shadow-sm sm:p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <MusicBingoLogo className="h-6 w-6" />
+              <span className="font-bold text-slate-50">{name}</span>
+            </div>
+            <div className="text-xs font-medium text-slate-300/80">
+              {roomState.phase === "playing" ? `Раунд ${roomState.roundNumber}` : "Ожидание"}
+            </div>
           </div>
         </header>
 
         {bingo && (
-          <div className="animate-pulse rounded-2xl bg-gradient-to-r from-pink-500 to-indigo-500 p-4 text-center text-2xl font-black text-white shadow-lg shadow-pink-500/30">
+          <div className="shrink-0 animate-pulse rounded-2xl bg-gradient-to-r from-pink-500 to-indigo-500 p-4 text-center text-2xl font-black text-white shadow-lg shadow-pink-500/30">
             🎉 Бинго! 🎉
           </div>
         )}
 
         {bingoError && (
-          <div className="rounded-xl border border-rose-500/30 bg-rose-500/15 p-4 text-center">
+          <div className="shrink-0 rounded-xl border border-rose-500/30 bg-rose-500/15 p-4 text-center">
             <p className="font-semibold text-rose-100">Пока не бинго 😅</p>
             <p className="text-sm text-rose-100/80">{bingoError.message}</p>
           </div>
@@ -122,7 +124,7 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
                   <button
                     key={idx}
                     onClick={() => toggleMark(cell.trackId)}
-                    className={`flex min-h-[68px] items-start justify-start overflow-hidden rounded-xl border p-0.5 text-left text-[9px] font-medium leading-tight transition sm:min-h-[80px] sm:p-1 sm:text-[11px] ${
+                    className={`flex min-h-[64px] items-start justify-start overflow-hidden rounded-xl border p-0.5 text-left text-[9px] font-medium leading-tight transition sm:min-h-[84px] sm:p-1 sm:text-[11px] ${
                       isMarked
                         ? "border-emerald-500/60 bg-emerald-500/25 text-emerald-50 shadow-sm"
                         : "border-slate-600/40 bg-slate-800 text-slate-100 shadow-sm hover:bg-slate-700"
@@ -137,14 +139,14 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
             <Button
               onClick={claimBingo}
               disabled={bingo}
-              className="w-full bg-pink-600 py-6 text-lg font-bold hover:bg-pink-500 disabled:opacity-60"
+              className="shrink-0 w-full bg-pink-600 py-5 text-lg font-bold hover:bg-pink-500 disabled:opacity-60 sm:py-6"
             >
               <Trophy className="mr-2 h-5 w-5" /> БИНГО!
             </Button>
           </>
         ) : (
-          <div className="rounded-2xl border border-indigo-500/30 bg-slate-900 p-8 text-center text-slate-300/80">
-            Ожидаем начала раунда и карточку от ведущего...
+          <div className="flex flex-1 items-center justify-center rounded-2xl border border-indigo-500/30 bg-slate-900 p-8 text-center text-slate-300/80">
+            Ожидаем, пока ведущий начнёт раунд...
           </div>
         )}
       </div>
