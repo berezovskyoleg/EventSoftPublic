@@ -22,8 +22,8 @@ export interface CardCell {
 export interface PlayerPublic {
   id: string;
   name: string;
-  bingoClaimed: boolean;
-  bingoConfirmed: boolean;
+  bingoWon: boolean;
+  bingoAt: number | null;
 }
 
 export interface RoomState {

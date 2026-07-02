@@ -4,8 +4,7 @@ import { Input } from "../../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { MusicBingoLogo } from "./logo";
 import { useRoom } from "./useRoom";
-import { checkPattern } from "./cards";
-import { Trophy, Music } from "lucide-react";
+import { Music } from "lucide-react";
 
 interface PlayerViewProps {
   roomCode: string;
@@ -15,9 +14,9 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
   const [name, setName] = React.useState("");
   const [joined, setJoined] = React.useState(false);
   const [marked, setMarked] = React.useState<Set<string>>(new Set());
-  const [claimSent, setClaimSent] = React.useState(false);
+  const [markError, setMarkError] = React.useState<string | null>(null);
 
-  const { connected, error, roomState, card, bingoResult, send } = useRoom(
+  const { connected, error, roomState, card, bingo, send } = useRoom(
     "player",
     roomCode,
     joined ? name : undefined
@@ -29,33 +28,31 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
   }, [joined, name, send]);
 
   React.useEffect(() => {
-    if (roomState.currentTrackId) {
-      setMarked((prev) => {
-        const next = new Set(prev);
-        next.add(roomState.currentTrackId!);
-        return next;
-      });
-    }
-  }, [roomState.currentTrackId]);
+    // Reset local marks on new round.
+    setMarked(new Set());
+    setMarkError(null);
+  }, [roomState.roundNumber, roomState.phase]);
 
   function toggleMark(trackId: string) {
-    setMarked((prev) => {
-      const next = new Set(prev);
-      if (next.has(trackId)) next.delete(trackId);
-      else next.add(trackId);
-      return next;
-    });
-    send({ type: "mark", trackId });
-  }
-
-  function claimBingo() {
-    if (!card) return;
-    const arr = card.map((c) => marked.has(c.trackId));
-    if (roomState.pattern && checkPattern(roomState.pattern, arr)) {
-      send({ type: "bingo" });
-      setClaimSent(true);
+    setMarkError(null);
+    if (!roomState.playedTrackIds.includes(trackId)) {
+      setMarkError("Эта песня ещё не звучала");
+      return;
+    }
+    if (marked.has(trackId)) {
+      setMarked((prev) => {
+        const next = new Set(prev);
+        next.delete(trackId);
+        return next;
+      });
+      send({ type: "mark", trackId });
     } else {
-      alert("Пока нет собранного паттерна");
+      setMarked((prev) => {
+        const next = new Set(prev);
+        next.add(trackId);
+        return next;
+      });
+      send({ type: "mark", trackId });
     }
   }
 
@@ -110,6 +107,12 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
           </div>
         </header>
 
+        {bingo && (
+          <div className="animate-pulse rounded-2xl bg-gradient-to-r from-pink-500 to-indigo-500 p-4 text-center text-2xl font-black text-white shadow-lg shadow-pink-500/30">
+            🎉 Бинго! 🎉
+          </div>
+        )}
+
         {roomState.currentTrackTitle && (
           <div className="rounded-xl border border-indigo-700/30 bg-[#1a1a24] p-3 text-center text-sm text-indigo-200/70">
             <Music className="mx-auto mb-1 h-5 w-5" />
@@ -117,36 +120,36 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
           </div>
         )}
 
+        {markError && (
+          <div className="rounded-lg bg-rose-500/20 px-3 py-2 text-center text-sm text-rose-200">
+            {markError}
+          </div>
+        )}
+
         {card ? (
-          <>
-            <div className="grid grid-cols-5 gap-1.5">
-              {card.map((cell, idx) => {
-                const isMarked = marked.has(cell.trackId);
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => toggleMark(cell.trackId)}
-                    className={`aspect-square rounded-lg border p-1 text-[10px] leading-tight transition ${
-                      isMarked
-                        ? "border-emerald-500/50 bg-emerald-500/20 text-emerald-100"
-                        : "border-indigo-700/40 bg-[#1a1a24] text-indigo-200/80 hover:bg-[#252532]"
-                    }`}
-                    title={cell.title}
-                  >
-                    <span className="line-clamp-3">{cell.title}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <Button onClick={claimBingo} className="w-full bg-pink-600 hover:bg-pink-500">
-              <Trophy className="mr-2 h-4 w-4" /> Бинго!
-            </Button>
-            {claimSent && bingoResult && (
-              <p className={`text-center text-sm font-semibold ${bingoResult.valid ? "text-emerald-400" : "text-rose-400"}`}>
-                {bingoResult.valid ? "Бинго подтверждено!" : "Бинго не подтверждено"}
-              </p>
-            )}
-          </>
+          <div className="grid grid-cols-5 gap-1.5">
+            {card.map((cell, idx) => {
+              const isMarked = marked.has(cell.trackId);
+              const played = roomState.playedTrackIds.includes(cell.trackId);
+              return (
+                <button
+                  key={idx}
+                  onClick={() => toggleMark(cell.trackId)}
+                  disabled={!played}
+                  className={`aspect-square rounded-lg border p-1 text-[10px] leading-tight transition ${
+                    isMarked
+                      ? "border-emerald-500/50 bg-emerald-500/20 text-emerald-100"
+                      : played
+                      ? "border-indigo-700/40 bg-[#1a1a24] text-indigo-200/80 hover:bg-[#252532]"
+                      : "cursor-not-allowed border-indigo-900/30 bg-[#0f0f13] text-indigo-400/40"
+                  }`}
+                  title={cell.title}
+                >
+                  <span className="line-clamp-3">{cell.title}</span>
+                </button>
+              );
+            })}
+          </div>
         ) : (
           <div className="rounded-2xl border border-indigo-700/30 bg-[#1a1a24] p-8 text-center text-indigo-200/60">
             Ожидаем начала раунда и карточку от ведущего...

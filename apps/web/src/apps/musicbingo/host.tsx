@@ -9,7 +9,7 @@ import { MusicBingoLogo } from "./logo";
 import { useRoom } from "./useRoom";
 import { pickMusicFiles, pickMusicFolder, supportsDirectoryPicker } from "./fileAccess";
 import { loadPlaylists, savePlaylists } from "./storage";
-import type { Playlist, Track, HostConfig, PlayerPublic } from "./types";
+import type { Playlist, Track, HostConfig } from "./types";
 import { PATTERNS } from "./types";
 import {
   Users,
@@ -25,7 +25,7 @@ import {
   Settings2,
   Gamepad2,
   AlertCircle,
-  CheckCircle2,
+  Trophy,
   Volume2,
   VolumeX,
   FolderOpen,
@@ -181,10 +181,6 @@ export function MusicBingoHost() {
     if (roundNumber < config.totalRounds) {
       setRoundNumber((n) => n + 1);
     }
-  }
-
-  function confirmBingo(player: PlayerPublic, valid: boolean) {
-    send({ type: "confirm_bingo", playerId: player.id, valid });
   }
 
   function resetGame() {
@@ -354,6 +350,36 @@ export function MusicBingoHost() {
               </Card>
             </div>
 
+
+            {/* Winners */}
+            {roomState.winners.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-sm uppercase tracking-wider text-indigo-200/70">
+                    <Trophy className="h-4 w-4 text-amber-400" /> Бинго!
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ol className="space-y-2">
+                    {roomState.winners.map((w, idx) => (
+                      <li
+                        key={w.playerId}
+                        className="flex items-center gap-3 rounded-lg bg-[#0f0f13] px-3 py-2"
+                      >
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/20 text-xs font-bold text-amber-300">
+                          {idx + 1}
+                        </span>
+                        <span className="font-medium">{w.name}</span>
+                        <span className="ml-auto text-xs text-indigo-200/50">
+                          {new Date(w.at).toLocaleTimeString("ru-RU", { minute: "2-digit", second: "2-digit" })}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-sm uppercase tracking-wider text-indigo-200/70">
@@ -368,24 +394,17 @@ export function MusicBingoHost() {
                 ) : (
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {players.map((p) => (
-                      <div key={p.id} className="flex items-center justify-between rounded-lg bg-[#0f0f13] p-3">
+                      <div
+                        key={p.id}
+                        className="flex items-center justify-between rounded-lg bg-[#0f0f13] p-3"
+                      >
                         <div>
                           <div className="font-medium">{p.name}</div>
                           <div className="text-xs text-indigo-200/50">
-                            {p.bingoClaimed ? "Заявил бинго" : "В игре"}
+                            {p.bingoWon ? "Собрал бинго" : "В игре"}
                           </div>
                         </div>
-                        {p.bingoClaimed && !p.bingoConfirmed && (
-                          <div className="flex gap-1">
-                            <Button size="sm" onClick={() => confirmBingo(p, true)} className="bg-emerald-600 hover:bg-emerald-500">
-                              <CheckCircle2 className="mr-1 h-3 w-3" /> Да
-                            </Button>
-                            <Button size="sm" onClick={() => confirmBingo(p, false)} variant="outline" className="border-rose-700/50 text-rose-300">
-                              Нет
-                            </Button>
-                          </div>
-                        )}
-                        {p.bingoConfirmed && <span className="text-sm font-bold text-emerald-400">Бинго!</span>}
+                        {p.bingoWon && <span className="text-sm font-bold text-emerald-400">Бинго!</span>}
                       </div>
                     ))}
                   </div>

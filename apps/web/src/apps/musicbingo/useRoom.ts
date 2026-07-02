@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import type { PlayerPublic, RoomState, CardCell } from "./types";
+import type { PlayerPublic, CardCell } from "./types";
 
 const WS_URL =
   window.location.protocol === "https:"
     ? `wss://${window.location.host}/ws/musicbingo`
     : `ws://${window.location.host}/ws/musicbingo`;
+
+export interface RoomState {
+  phase: "lobby" | "playing" | "roundover" | "gameover";
+  roundNumber: number;
+  pattern: string | null;
+  currentTrackId: string | null;
+  currentTrackTitle: string | null;
+  playedTrackIds: string[];
+  winners: { playerId: string; name: string; at: number }[];
+}
 
 export function useRoom(role: "host" | "player", roomCode: string, playerName?: string) {
   const wsRef = useRef<WebSocket | null>(null);
@@ -17,9 +27,11 @@ export function useRoom(role: "host" | "player", roomCode: string, playerName?: 
     pattern: null,
     currentTrackId: null,
     currentTrackTitle: null,
+    playedTrackIds: [],
+    winners: [],
   });
   const [card, setCard] = useState<CardCell[] | null>(null);
-  const [bingoResult, setBingoResult] = useState<{ valid: boolean } | null>(null);
+  const [bingo, setBingo] = useState(false);
   const [playerId, setPlayerId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,6 +51,7 @@ export function useRoom(role: "host" | "player", roomCode: string, playerName?: 
         switch (msg.type) {
           case "host_assigned":
             setPlayers(msg.players || []);
+            setRoomState((s) => ({ ...s, winners: msg.winners || [] }));
             break;
           case "joined":
             setPlayerId(msg.playerId);
@@ -59,29 +72,38 @@ export function useRoom(role: "host" | "player", roomCode: string, playerName?: 
             setPlayers((prev) => prev.filter((p) => p.id !== msg.playerId));
             break;
           case "round_state":
-            setRoomState({
+            setRoomState((s) => ({
               phase: msg.phase,
               roundNumber: msg.roundNumber,
               pattern: msg.pattern,
-              currentTrackId: msg.currentTrackId,
-              currentTrackTitle: msg.currentTrackTitle,
-            });
+              currentTrackId: msg.currentTrackId ?? s.currentTrackId,
+              currentTrackTitle: msg.currentTrackTitle ?? s.currentTrackTitle,
+              playedTrackIds: msg.playedTrackIds || [],
+              winners: msg.winners || [],
+            }));
+            setBingo(false);
             break;
           case "card":
             setCard(msg.card);
+            setBingo(false);
             break;
           case "track_started":
-            setRoomState((prev) => ({
-              ...prev,
+            setRoomState((s) => ({
+              ...s,
               currentTrackId: msg.trackId,
               currentTrackTitle: msg.title,
+              playedTrackIds: Array.from(new Set([...s.playedTrackIds, msg.trackId])),
             }));
             break;
-          case "bingo_claim":
-            // host only
+          case "bingo":
+            if (msg.you) setBingo(true);
             break;
-          case "bingo_confirmed":
-            setBingoResult({ valid: msg.valid });
+          case "player_bingo":
+            setPlayers((prev) =>
+              prev.map((p) =>
+                p.id === msg.playerId ? { ...p, bingoWon: true, bingoAt: Date.now() } : p
+              )
+            );
             break;
           case "reset_game":
             setPlayers([]);
@@ -91,9 +113,11 @@ export function useRoom(role: "host" | "player", roomCode: string, playerName?: 
               pattern: null,
               currentTrackId: null,
               currentTrackTitle: null,
+              playedTrackIds: [],
+              winners: [],
             });
             setCard(null);
-            setBingoResult(null);
+            setBingo(false);
             break;
           case "error":
             setError(msg.message);
@@ -121,7 +145,7 @@ export function useRoom(role: "host" | "player", roomCode: string, playerName?: 
     players,
     roomState,
     card,
-    bingoResult,
+    bingo,
     playerId,
     send,
   };

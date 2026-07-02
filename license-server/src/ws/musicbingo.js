@@ -10,14 +10,13 @@ class Room {
     this.code = code;
     this.host = hostWs;
     this.hostId = generateId();
-    this.players = new Map(); // playerId -> { ws, name, card, bingoClaimed, bingoConfirmed }
+    this.players = new Map(); // playerId -> Player
     this.phase = "lobby"; // lobby | playing | roundover | gameover
     this.roundNumber = 1;
-    this.currentTrackId = null;
-    this.currentTrackTitle = null;
     this.pattern = null;
-    this.winners = [];
     this.trackPool = []; // { id, title, artist }[]
+    this.playedTrackIds = new Set();
+    this.winners = []; // { playerId, name, at }[]
   }
 
   broadcastToPlayers(message) {
@@ -46,19 +45,29 @@ class Room {
       ws,
       name,
       card: null,
-      bingoClaimed: false,
-      bingoConfirmed: false,
+      markedIds: new Set(),
+      bingoWon: false,
+      bingoAt: null,
     };
     this.players.set(id, player);
     this.hostSend({ type: "player_joined", player: this.playerPublic(player) });
     ws.send(JSON.stringify({ type: "joined", playerId: id, roomCode: this.code }));
-    // If a round is in progress and we know the track pool, generate a card immediately.
+    // Send state first, then card if round is in progress.
+    ws.send(JSON.stringify({
+      type: "round_state",
+      phase: this.phase,
+      roundNumber: this.roundNumber,
+      pattern: this.pattern,
+      playedTrackIds: Array.from(this.playedTrackIds),
+      winners: this.winners,
+    }));
     if (this.phase === "playing" && this.trackPool.length >= 25) {
       player.card = generateCard(this.trackPool);
       ws.send(JSON.stringify({ type: "card", card: player.card }));
     }
     return player;
   }
+
 
   removePlayer(ws) {
     for (const [id, p] of this.players.entries()) {
@@ -70,30 +79,39 @@ class Room {
     }
   }
 
-  setCards(cards) {
-    // cards: [{ playerId, cells: [{ trackId, title, artist }] }]
-    for (const c of cards) {
-      const p = this.players.get(c.playerId);
-      if (p) p.card = c.cells;
-    }
-    for (const p of this.players.values()) {
-      if (p.card && p.ws.readyState === 1) {
-        p.ws.send(JSON.stringify({ type: "card", card: p.card }));
-      }
-    }
-  }
-
   playerPublic(p) {
     return {
       id: p.id,
       name: p.name,
-      bingoClaimed: p.bingoClaimed,
-      bingoConfirmed: p.bingoConfirmed,
+      bingoWon: p.bingoWon,
+      bingoAt: p.bingoAt,
     };
   }
 
   allPlayersPublic() {
     return Array.from(this.players.values()).map((p) => this.playerPublic(p));
+  }
+
+  distributeCards() {
+    for (const p of this.players.values()) {
+      p.card = generateCard(this.trackPool);
+      if (p.ws.readyState === 1) {
+        p.ws.send(JSON.stringify({ type: "card", card: p.card }));
+      }
+    }
+  }
+
+  mark(player, trackId) {
+    if (!this.playedTrackIds.has(trackId)) return { ok: false, error: "not_played" };
+    if (!player.card || !player.card.some((c) => c.trackId === trackId)) return { ok: false, error: "not_on_card" };
+    player.markedIds.add(trackId);
+    return { ok: true };
+  }
+
+  checkBingo(player) {
+    if (!this.pattern || !player.card) return false;
+    const marked = player.card.map((c) => player.markedIds.has(c.trackId));
+    return checkPattern(this.pattern, marked);
   }
 }
 
@@ -111,11 +129,45 @@ function generateCard(trackPool) {
   }));
 }
 
+function checkPattern(pattern, marked) {
+  if (marked.length !== 25) return false;
+  const rows = [];
+  for (let r = 0; r < 5; r++) rows.push(Array.from({ length: 5 }, (_, c) => r * 5 + c));
+  const cols = [];
+  for (let c = 0; c < 5; c++) cols.push(Array.from({ length: 5 }, (_, r) => r * 5 + c));
+  const diag1 = [0, 6, 12, 18, 24];
+  const diag2 = [4, 8, 12, 16, 20];
+  const corners = [0, 4, 20, 24];
+  const all = Array.from({ length: 25 }, (_, i) => i);
+
+  switch (pattern) {
+    case "line_horizontal":
+      return rows.some((line) => line.every((i) => marked[i]));
+    case "line_vertical":
+      return cols.some((line) => line.every((i) => marked[i]));
+    case "two_lines": {
+      let c = 0;
+      [...rows, ...cols].forEach((line) => { if (line.every((i) => marked[i])) c++; });
+      return c >= 2;
+    }
+    case "three_lines": {
+      let c = 0;
+      [...rows, ...cols].forEach((line) => { if (line.every((i) => marked[i])) c++; });
+      return c >= 3;
+    }
+    case "four_corners":
+      return corners.every((i) => marked[i]);
+    case "x":
+      return diag1.every((i) => marked[i]) && diag2.every((i) => marked[i]);
+    case "full_house":
+      return all.every((i) => marked[i]);
+    default:
+      return false;
+  }
+}
+
 function setupMusicBingoWSS(server) {
-  const wss = new WebSocketServer({
-    server,
-    path: "/ws/musicbingo",
-  });
+  const wss = new WebSocketServer({ server, path: "/ws/musicbingo" });
 
   wss.on("connection", (ws, req) => {
     const { query } = parse(req.url || "", true);
@@ -129,7 +181,6 @@ function setupMusicBingoWSS(server) {
     }
 
     if (role === "host") {
-      // If room exists, replace host (reconnect).
       const room = rooms.get(roomCode) || new Room(roomCode, ws);
       room.host = ws;
       rooms.set(roomCode, room);
@@ -138,23 +189,21 @@ function setupMusicBingoWSS(server) {
         try {
           const msg = JSON.parse(raw.toString());
           handleHostMessage(room, ws, msg);
-        } catch (err) {
+        } catch {
           ws.send(JSON.stringify({ type: "error", message: "Invalid message" }));
         }
       });
 
       ws.on("close", () => {
-        // Keep room alive for players, but mark host offline.
         if (room.host === ws) room.host = null;
       });
 
-      ws.send(
-        JSON.stringify({
-          type: "host_assigned",
-          roomCode,
-          players: room.allPlayersPublic(),
-        })
-      );
+      ws.send(JSON.stringify({
+        type: "host_assigned",
+        roomCode,
+        players: room.allPlayersPublic(),
+        winners: room.winners,
+      }));
       return;
     }
 
@@ -171,26 +220,12 @@ function setupMusicBingoWSS(server) {
         try {
           const msg = JSON.parse(raw.toString());
           handlePlayerMessage(room, player, msg);
-        } catch (err) {
+        } catch {
           ws.send(JSON.stringify({ type: "error", message: "Invalid message" }));
         }
       });
 
-      ws.on("close", () => {
-        room.removePlayer(ws);
-      });
-
-      // Send current round state if already playing.
-      ws.send(
-        JSON.stringify({
-          type: "round_state",
-          phase: room.phase,
-          roundNumber: room.roundNumber,
-          pattern: room.pattern,
-          currentTrackId: room.currentTrackId,
-          currentTrackTitle: room.currentTrackTitle,
-        })
-      );
+      ws.on("close", () => room.removePlayer(ws));
       return;
     }
 
@@ -204,32 +239,34 @@ function setupMusicBingoWSS(server) {
 function handleHostMessage(room, ws, msg) {
   switch (msg.type) {
     case "start_round": {
+      if (!Array.isArray(msg.trackPool) || msg.trackPool.length < 25) {
+        ws.send(JSON.stringify({ type: "error", message: "Need at least 25 tracks" }));
+        return;
+      }
       room.phase = "playing";
       room.roundNumber = msg.roundNumber || room.roundNumber;
       room.pattern = msg.pattern || room.pattern;
-      room.currentTrackId = null;
-      room.currentTrackTitle = null;
-      if (Array.isArray(msg.trackPool) && msg.trackPool.length >= 25) {
-        room.trackPool = msg.trackPool;
-      }
-      // Reset player bingo claims for new round.
+      room.trackPool = msg.trackPool;
+      room.playedTrackIds.clear();
+      room.winners = [];
       for (const p of room.players.values()) {
-        p.bingoClaimed = false;
-        p.bingoConfirmed = false;
+        p.markedIds.clear();
+        p.bingoWon = false;
+        p.bingoAt = null;
       }
+      room.distributeCards();
       room.broadcastToAll({
         type: "round_state",
         phase: room.phase,
         roundNumber: room.roundNumber,
         pattern: room.pattern,
-        currentTrackId: null,
-        currentTrackTitle: null,
+        playedTrackIds: [],
+        winners: [],
       });
       break;
     }
     case "track_started": {
-      room.currentTrackId = msg.trackId;
-      room.currentTrackTitle = msg.title;
+      room.playedTrackIds.add(msg.trackId);
       room.broadcastToAll({
         type: "track_started",
         trackId: msg.trackId,
@@ -245,8 +282,8 @@ function handleHostMessage(room, ws, msg) {
         phase: room.phase,
         roundNumber: room.roundNumber,
         pattern: room.pattern,
-        currentTrackId: room.currentTrackId,
-        currentTrackTitle: room.currentTrackTitle,
+        playedTrackIds: Array.from(room.playedTrackIds),
+        winners: room.winners,
       });
       break;
     }
@@ -257,30 +294,8 @@ function handleHostMessage(room, ws, msg) {
         phase: room.phase,
         roundNumber: room.roundNumber,
         pattern: room.pattern,
-        currentTrackId: room.currentTrackId,
-        currentTrackTitle: room.currentTrackTitle,
-      });
-      break;
-    }
-    case "distribute_cards": {
-      room.setCards(msg.cards || []);
-      break;
-    }
-    case "confirm_bingo": {
-      const p = room.players.get(msg.playerId);
-      if (!p) break;
-      const valid = !!msg.valid;
-      p.bingoConfirmed = valid;
-      if (valid) room.winners.push(p.id);
-      p.ws.send(
-        JSON.stringify({
-          type: "bingo_confirmed",
-          valid,
-        })
-      );
-      room.broadcastToAll({
-        type: "player_update",
-        player: room.playerPublic(p),
+        playedTrackIds: Array.from(room.playedTrackIds),
+        winners: room.winners,
       });
       break;
     }
@@ -288,9 +303,9 @@ function handleHostMessage(room, ws, msg) {
       room.players.clear();
       room.phase = "lobby";
       room.roundNumber = 1;
-      room.currentTrackId = null;
-      room.currentTrackTitle = null;
       room.pattern = null;
+      room.trackPool = [];
+      room.playedTrackIds.clear();
       room.winners = [];
       room.broadcastToAll({ type: "reset_game" });
       break;
@@ -302,28 +317,31 @@ function handleHostMessage(room, ws, msg) {
 
 function handlePlayerMessage(room, player, msg) {
   switch (msg.type) {
-    case "set_name": {
+    case "set_name":
       player.name = msg.name || player.name;
       room.hostSend({ type: "player_update", player: room.playerPublic(player) });
       break;
-    }
     case "mark": {
-      player.ws.send(
-        JSON.stringify({ type: "mark_ack", trackId: msg.trackId })
-      );
-      break;
-    }
-    case "bingo": {
-      player.bingoClaimed = true;
-      room.hostSend({
-        type: "bingo_claim",
-        playerId: player.id,
-        name: player.name,
-      });
-      room.broadcastToAll({
-        type: "player_update",
-        player: room.playerPublic(player),
-      });
+      const result = room.mark(player, msg.trackId);
+      if (!result.ok) {
+        player.ws.send(JSON.stringify({ type: "mark_error", error: result.error }));
+        return;
+      }
+      player.ws.send(JSON.stringify({ type: "mark_ack", trackId: msg.trackId }));
+      if (!player.bingoWon && room.checkBingo(player)) {
+        player.bingoWon = true;
+        player.bingoAt = Date.now();
+        const winner = { playerId: player.id, name: player.name, at: player.bingoAt };
+        room.winners.push(winner);
+        room.winners.sort((a, b) => a.at - b.at);
+        player.ws.send(JSON.stringify({ type: "bingo", you: true }));
+        room.hostSend({ type: "bingo", winner });
+        room.broadcastToPlayers({
+          type: "player_bingo",
+          playerId: player.id,
+          name: player.name,
+        });
+      }
       break;
     }
     default:
