@@ -35,6 +35,7 @@ export function useRoom(role: "host" | "player", roomCode: string, playerName?: 
   });
   const [card, setCard] = useState<CardCell[] | null>(null);
   const [bingo, setBingo] = useState(false);
+  const [bingoError, setBingoError] = useState<{ error: string; message: string } | null>(null);
   const [playerId, setPlayerId] = useState<string | null>(null);
 
   const connect = useCallback(() => {
@@ -102,6 +103,7 @@ export function useRoom(role: "host" | "player", roomCode: string, playerName?: 
               winners: msg.winners || [],
             }));
             setBingo(false);
+            setBingoError(null);
             break;
           case "card":
             setCard(msg.card);
@@ -116,14 +118,23 @@ export function useRoom(role: "host" | "player", roomCode: string, playerName?: 
             }));
             break;
           case "bingo":
-            if (msg.you) {
-              setBingo(true);
-            } else if (msg.winner) {
+            if (msg.you) setBingo(true);
+            if (msg.winner) {
               setRoomState((s) => ({
                 ...s,
                 winners: [...s.winners, msg.winner].sort((a, b) => a.at - b.at),
               }));
             }
+            break;
+          case "bingo_error":
+            setBingoError({ error: msg.error, message: msg.message || "Пока не бинго — продолжай!" });
+            break;
+          case "player_progress":
+            setPlayers((prev) =>
+              prev.map((p) =>
+                p.id === msg.playerId ? { ...p, progress: msg.progress } : p
+              )
+            );
             break;
           case "player_bingo":
             setPlayers((prev) =>
@@ -199,6 +210,7 @@ export function useRoom(role: "host" | "player", roomCode: string, playerName?: 
     roomState,
     card,
     bingo,
+    bingoError,
     playerId,
     send,
   };

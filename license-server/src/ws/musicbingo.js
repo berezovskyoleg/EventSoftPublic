@@ -102,16 +102,25 @@ class Room {
   }
 
   mark(player, trackId) {
-    if (!this.playedTrackIds.has(trackId)) return { ok: false, error: "not_played" };
     if (!player.card || !player.card.some((c) => c.trackId === trackId)) return { ok: false, error: "not_on_card" };
     player.markedIds.add(trackId);
     return { ok: true };
   }
 
+  unmark(player, trackId) {
+    player.markedIds.delete(trackId);
+  }
+
   checkBingo(player) {
     if (!this.pattern || !player.card) return false;
-    const marked = player.card.map((c) => player.markedIds.has(c.trackId));
-    return checkPattern(this.pattern, marked);
+    const validMarked = player.card.map((c) => player.markedIds.has(c.trackId) && this.playedTrackIds.has(c.trackId));
+    return checkPattern(this.pattern, validMarked);
+  }
+
+  playerProgress(player) {
+    if (!this.pattern || !player.card) return null;
+    const validMarked = player.card.map((c) => player.markedIds.has(c.trackId) && this.playedTrackIds.has(c.trackId));
+    return patternProgress(this.pattern, validMarked);
   }
 }
 
@@ -164,6 +173,72 @@ function checkPattern(pattern, marked) {
     default:
       return false;
   }
+}
+
+function patternProgress(pattern, marked) {
+  if (marked.length !== 25) return { completed: false, remaining: 99, total: 0 };
+  const rows = [];
+  for (let r = 0; r < 5; r++) rows.push(Array.from({ length: 5 }, (_, c) => r * 5 + c));
+  const cols = [];
+  for (let c = 0; c < 5; c++) cols.push(Array.from({ length: 5 }, (_, r) => r * 5 + c));
+  const diag1 = [0, 6, 12, 18, 24];
+  const diag2 = [4, 8, 12, 16, 20];
+  const corners = [0, 4, 20, 24];
+  const all = Array.from({ length: 25 }, (_, i) => i);
+
+  let lines = [];
+  let required = 1;
+  switch (pattern) {
+    case "line_horizontal":
+      lines = rows;
+      break;
+    case "line_vertical":
+      lines = cols;
+      break;
+    case "two_lines":
+      lines = [...rows, ...cols];
+      required = 2;
+      break;
+    case "three_lines":
+      lines = [...rows, ...cols];
+      required = 3;
+      break;
+    case "four_corners":
+      lines = [corners];
+      break;
+    case "x":
+      lines = [diag1, diag2];
+      required = 2;
+      break;
+    case "full_house":
+      lines = [all];
+      break;
+    default:
+      lines = [];
+  }
+
+  // Sort lines by how many cells are already marked (descending).
+  const scored = lines.map((line) => ({
+    line,
+    marked: line.filter((i) => marked[i]).length,
+    total: line.length,
+  })).sort((a, b) => b.marked - a.marked);
+
+  // Take top N lines needed to satisfy required count.
+  let completed = 0;
+  let cellsNeeded = 0;
+  for (const s of scored) {
+    if (completed < required) {
+      cellsNeeded += s.total - s.marked;
+      if (s.marked === s.total) completed++;
+    }
+  }
+
+  return {
+    completed: completed >= required,
+    remaining: Math.max(0, cellsNeeded),
+    total: required * (scored[0]?.total || 0),
+  };
 }
 
 function setupMusicBingoWSS(server) {
@@ -330,7 +405,28 @@ function handlePlayerMessage(room, player, msg) {
         return;
       }
       player.ws.send(JSON.stringify({ type: "mark_ack", trackId: msg.trackId }));
-      if (!player.bingoWon && room.checkBingo(player)) {
+      const progress = room.playerProgress(player);
+      if (progress) {
+        room.hostSend({ type: "player_progress", playerId: player.id, progress });
+      }
+      break;
+    }
+    case "unmark": {
+      room.unmark(player, msg.trackId);
+      player.ws.send(JSON.stringify({ type: "unmark_ack", trackId: msg.trackId }));
+      const progress = room.playerProgress(player);
+      if (progress) {
+        room.hostSend({ type: "player_progress", playerId: player.id, progress });
+      }
+      break;
+    }
+    case "bingo": {
+      if (player.bingoWon) {
+        player.ws.send(JSON.stringify({ type: "bingo_error", error: "already_won" }));
+        return;
+      }
+      const valid = room.checkBingo(player);
+      if (valid) {
         player.bingoWon = true;
         player.bingoAt = Date.now();
         const winner = { playerId: player.id, name: player.name, at: player.bingoAt };
@@ -343,6 +439,19 @@ function handlePlayerMessage(room, player, msg) {
           playerId: player.id,
           name: player.name,
         });
+      } else {
+        const phrases = [
+          "Почти! Слушай внимательнее 🎧",
+          "Не сдавайся, следующая песня точно подойдёт!",
+          "Удача любит настойчивых — продолжай!",
+          "Пока не бинго, но ты близко!",
+          "Включи уши на максимум и попробуй ещё раз 🎵",
+        ];
+        player.ws.send(JSON.stringify({
+          type: "bingo_error",
+          error: "not_ready",
+          message: phrases[Math.floor(Math.random() * phrases.length)],
+        }));
       }
       break;
     }

@@ -24,6 +24,7 @@ export interface PlayerPublic {
   name: string;
   bingoWon: boolean;
   bingoAt: number | null;
+  progress?: { completed: boolean; remaining: number; total: number } | null;
 }
 
 export interface RoomState {
