@@ -115,21 +115,21 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
 
         {card ? (
           <>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-5 gap-1 sm:gap-2">
               {card.map((cell, idx) => {
                 const isMarked = marked.has(cell.trackId);
                 return (
                   <button
                     key={idx}
                     onClick={() => toggleMark(cell.trackId)}
-                    className={`flex aspect-square items-center justify-center rounded-xl border p-1 text-[11px] font-medium leading-tight transition ${
+                    className={`flex min-h-[68px] items-start justify-start overflow-hidden rounded-xl border p-0.5 text-left text-[9px] font-medium leading-tight transition sm:min-h-[80px] sm:p-1 sm:text-[11px] ${
                       isMarked
                         ? "border-emerald-500/60 bg-emerald-500/25 text-emerald-50 shadow-sm"
                         : "border-slate-600/40 bg-slate-800 text-slate-100 shadow-sm hover:bg-slate-700"
                     }`}
                     title={cell.title}
                   >
-                    <span className="line-clamp-3">{cell.title}</span>
+                    <span className="break-words">{cell.title}</span>
                   </button>
                 );
               })}
