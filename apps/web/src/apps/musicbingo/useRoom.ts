@@ -96,7 +96,14 @@ export function useRoom(role: "host" | "player", roomCode: string, playerName?: 
             }));
             break;
           case "bingo":
-            if (msg.you) setBingo(true);
+            if (msg.you) {
+              setBingo(true);
+            } else if (msg.winner) {
+              setRoomState((s) => ({
+                ...s,
+                winners: [...s.winners, msg.winner].sort((a, b) => a.at - b.at),
+              }));
+            }
             break;
           case "player_bingo":
             setPlayers((prev) =>

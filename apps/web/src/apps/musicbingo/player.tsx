@@ -130,18 +130,14 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
           <div className="grid grid-cols-5 gap-1.5">
             {card.map((cell, idx) => {
               const isMarked = marked.has(cell.trackId);
-              const played = roomState.playedTrackIds.includes(cell.trackId);
               return (
                 <button
                   key={idx}
                   onClick={() => toggleMark(cell.trackId)}
-                  disabled={!played}
                   className={`aspect-square rounded-lg border p-1 text-[10px] leading-tight transition ${
                     isMarked
                       ? "border-emerald-500/50 bg-emerald-500/20 text-emerald-100"
-                      : played
-                      ? "border-indigo-700/40 bg-[#1a1a24] text-indigo-200/80 hover:bg-[#252532]"
-                      : "cursor-not-allowed border-indigo-900/30 bg-[#0f0f13] text-indigo-400/40"
+                      : "border-indigo-700/40 bg-[#1a1a24] text-indigo-200/80 hover:bg-[#252532]"
                   }`}
                   title={cell.title}
                 >
