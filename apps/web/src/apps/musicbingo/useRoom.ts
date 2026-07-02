@@ -18,6 +18,9 @@ export interface RoomState {
 
 export function useRoom(role: "host" | "player", roomCode: string, playerName?: string) {
   const wsRef = useRef<WebSocket | null>(null);
+  const pingRef = useRef<number | null>(null);
+  const reconnectRef = useRef<number | null>(null);
+  const attemptRef = useRef(0);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [players, setPlayers] = useState<PlayerPublic[]>([]);
@@ -34,16 +37,33 @@ export function useRoom(role: "host" | "player", roomCode: string, playerName?: 
   const [bingo, setBingo] = useState(false);
   const [playerId, setPlayerId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const connect = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+
     const url = `${WS_URL}?room=${encodeURIComponent(roomCode)}&role=${role}${
       role === "player" && playerName ? `&name=${encodeURIComponent(playerName)}` : ""
     }`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
-    ws.onopen = () => setConnected(true);
-    ws.onclose = () => setConnected(false);
-    ws.onerror = () => setError("Ошибка соединения");
+    ws.onopen = () => {
+      setConnected(true);
+      setError(null);
+      attemptRef.current = 0;
+    };
+
+    ws.onclose = () => {
+      setConnected(false);
+      // Exponential reconnect.
+      const delay = Math.min(1000 * 2 ** attemptRef.current, 30000);
+      attemptRef.current += 1;
+      if (reconnectRef.current) window.clearTimeout(reconnectRef.current);
+      reconnectRef.current = window.setTimeout(connect, delay);
+    };
+
+    ws.onerror = () => {
+      setError("Ошибка соединения");
+    };
 
     ws.onmessage = (ev) => {
       try {
@@ -134,11 +154,37 @@ export function useRoom(role: "host" | "player", roomCode: string, playerName?: 
         // ignore
       }
     };
+  }, [role, roomCode, playerName]);
+
+  useEffect(() => {
+    connect();
+
+    // Heartbeat to keep connection alive through short sleeps.
+    pingRef.current = window.setInterval(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: "ping" }));
+      }
+    }, 20000);
+
+    // Reconnect immediately when the device wakes up or comes back online.
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && wsRef.current?.readyState !== WebSocket.OPEN) {
+        connect();
+      }
+    };
+    const onOnline = () => connect();
+
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onOnline);
 
     return () => {
-      ws.close();
+      if (pingRef.current) window.clearInterval(pingRef.current);
+      if (reconnectRef.current) window.clearTimeout(reconnectRef.current);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onOnline);
+      wsRef.current?.close();
     };
-  }, [role, roomCode, playerName]);
+  }, [connect]);
 
   const send = useCallback((msg: object) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

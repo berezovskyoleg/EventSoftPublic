@@ -4,7 +4,6 @@ import { Input } from "../../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { MusicBingoLogo } from "./logo";
 import { useRoom } from "./useRoom";
-import { Music } from "lucide-react";
 
 interface PlayerViewProps {
   roomCode: string;
@@ -110,13 +109,6 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
         {bingo && (
           <div className="animate-pulse rounded-2xl bg-gradient-to-r from-pink-500 to-indigo-500 p-4 text-center text-2xl font-black text-white shadow-lg shadow-pink-500/30">
             🎉 Бинго! 🎉
-          </div>
-        )}
-
-        {roomState.currentTrackTitle && (
-          <div className="rounded-xl border border-indigo-700/30 bg-[#1a1a24] p-3 text-center text-sm text-indigo-200/70">
-            <Music className="mx-auto mb-1 h-5 w-5" />
-            Сейчас: <span className="font-semibold text-indigo-100">{roomState.currentTrackTitle}</span>
           </div>
         )}
 

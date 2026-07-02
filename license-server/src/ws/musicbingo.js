@@ -321,6 +321,8 @@ function handlePlayerMessage(room, player, msg) {
       player.name = msg.name || player.name;
       room.hostSend({ type: "player_update", player: room.playerPublic(player) });
       break;
+    case "ping":
+      break;
     case "mark": {
       const result = room.mark(player, msg.trackId);
       if (!result.ok) {
