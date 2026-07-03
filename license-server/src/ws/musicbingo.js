@@ -225,17 +225,19 @@ function patternProgress(pattern, marked) {
   })).sort((a, b) => b.marked - a.marked);
 
   // Take top N lines needed to satisfy required count.
-  let completed = 0;
+  let completedLines = 0;
   let cellsNeeded = 0;
+  let taken = 0;
   for (const s of scored) {
-    if (completed < required) {
+    if (taken < required) {
       cellsNeeded += s.total - s.marked;
-      if (s.marked === s.total) completed++;
+      if (s.marked === s.total) completedLines++;
+      taken++;
     }
   }
 
   return {
-    completed: completed >= required,
+    completed: completedLines >= required,
     remaining: Math.max(0, cellsNeeded),
     total: required * (scored[0]?.total || 0),
   };
