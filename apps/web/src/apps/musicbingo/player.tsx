@@ -117,8 +117,8 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
   }
 
   return (
-    <div className="flex h-screen w-full max-w-full flex-col overflow-x-hidden overflow-y-auto bg-slate-950 p-3 text-slate-50 sm:p-4">
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-3">
+    <div className="flex h-screen w-full max-w-full flex-col overflow-x-hidden overflow-y-auto bg-slate-950 p-2 text-slate-50 sm:p-4">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-2 sm:gap-3">
         <header className="shrink-0 rounded-2xl border border-indigo-500/30 bg-slate-900 p-3 shadow-sm sm:p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -155,14 +155,14 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
 
         {card ? (
           <>
-            <div className="grid grid-cols-5 gap-1 sm:gap-2">
+            <div className="grid flex-1 grid-cols-5 gap-1 sm:gap-2">
               {card.map((cell, idx) => {
                 const isMarked = marked.has(cell.trackId);
                 return (
                   <button
                     key={idx}
                     onClick={() => toggleMark(cell.trackId)}
-                    className={`flex min-h-[64px] items-start justify-start overflow-hidden rounded-xl border p-0.5 text-left text-[9px] font-medium leading-tight transition sm:min-h-[84px] sm:p-1 sm:text-[11px] ${
+                    className={`flex min-h-0 items-center justify-center rounded-xl border p-0.5 text-center text-[9px] font-medium leading-tight transition sm:p-1 sm:text-[11px] ${
                       isMarked
                         ? "border-emerald-500/60 bg-emerald-500/25 text-emerald-50 shadow-sm"
                         : "border-slate-600/40 bg-slate-800 text-slate-100 shadow-sm hover:bg-slate-700"
