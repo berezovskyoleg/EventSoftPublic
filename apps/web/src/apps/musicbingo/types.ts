@@ -45,6 +45,16 @@ export const PATTERNS = [
   { value: "full_house", label: "Полный дом" },
 ];
 
+export const PATTERN_INSTRUCTIONS: Record<string, string> = {
+  line_horizontal: "Соберите 1 линию песен по горизонтали и жмите БИНГО!",
+  line_vertical: "Соберите 1 линию песен по вертикали и жмите БИНГО!",
+  two_lines: "Соберите любые 2 линии и жмите БИНГО!",
+  three_lines: "Соберите любые 3 линии и жмите БИНГО!",
+  four_corners: "Отметьте 4 угловые песни и жмите БИНГО!",
+  x: "Отметьте песни по диагонали — букву X — и жмите БИНГО!",
+  full_house: "Отметьте все песни на карточке и жмите БИНГО!",
+};
+
 export interface HostConfig {
   hostName: string;
   roomCode: string;

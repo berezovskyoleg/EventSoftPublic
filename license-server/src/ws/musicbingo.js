@@ -11,6 +11,7 @@ class Room {
     this.host = hostWs;
     this.hostId = generateId();
     this.players = new Map(); // playerId -> Player
+    this.disconnectTimers = new Map(); // playerId -> timeout
     this.phase = "lobby"; // lobby | playing | roundover | gameover
     this.roundNumber = 1;
     this.pattern = null;
@@ -38,8 +39,36 @@ class Room {
     }
   }
 
-  addPlayer(ws, name) {
-    const id = generateId();
+  addPlayer(ws, name, requestedId) {
+    // If a playerId is supplied and we already know this player, reconnect.
+    if (requestedId && this.players.has(requestedId)) {
+      const player = this.players.get(requestedId);
+      player.ws = ws;
+      if (name) player.name = name;
+      if (this.disconnectTimers.has(player.id)) {
+        clearTimeout(this.disconnectTimers.get(player.id));
+        this.disconnectTimers.delete(player.id);
+      }
+      ws.send(JSON.stringify({ type: "joined", playerId: player.id, roomCode: this.code }));
+      ws.send(JSON.stringify({
+        type: "round_state",
+        phase: this.phase,
+        roundNumber: this.roundNumber,
+        pattern: this.pattern,
+        playedTrackIds: Array.from(this.playedTrackIds),
+        winners: this.winners,
+      }));
+      if (player.card) {
+        ws.send(JSON.stringify({ type: "card", card: player.card }));
+      } else if (this.phase === "playing" && this.trackPool.length >= 25) {
+        player.card = generateCard(this.trackPool);
+        ws.send(JSON.stringify({ type: "card", card: player.card }));
+      }
+      this.hostSend({ type: "player_update", player: this.playerPublic(player) });
+      return player;
+    }
+
+    const id = requestedId && !this.players.has(requestedId) ? requestedId : generateId();
     const player = {
       id,
       ws,
@@ -72,8 +101,14 @@ class Room {
   removePlayer(ws) {
     for (const [id, p] of this.players.entries()) {
       if (p.ws === ws) {
-        this.players.delete(id);
-        this.hostSend({ type: "player_left", playerId: id });
+        // Give the player 60 seconds to reconnect (phone sleep / reload).
+        if (this.disconnectTimers.has(id)) clearTimeout(this.disconnectTimers.get(id));
+        const timer = setTimeout(() => {
+          this.players.delete(id);
+          this.disconnectTimers.delete(id);
+          this.hostSend({ type: "player_left", playerId: id });
+        }, 60000);
+        this.disconnectTimers.set(id, timer);
         return;
       }
     }
@@ -291,7 +326,7 @@ function setupMusicBingoWSS(server) {
         ws.close();
         return;
       }
-      const player = room.addPlayer(ws, query.name?.toString() || "Игрок");
+      const player = room.addPlayer(ws, query.name?.toString() || "Игрок", query.playerId?.toString());
 
       ws.on("message", (raw) => {
         try {
@@ -400,6 +435,19 @@ function handlePlayerMessage(room, player, msg) {
       break;
     case "ping":
       break;
+    case "sync_marks": {
+      if (!Array.isArray(msg.trackIds)) break;
+      const onCard = new Set((player.card || []).map((c) => c.trackId));
+      for (const tid of msg.trackIds) {
+        if (onCard.has(tid)) player.markedIds.add(tid);
+      }
+      player.ws.send(JSON.stringify({ type: "sync_marks_ack", trackIds: Array.from(player.markedIds) }));
+      const progress = room.playerProgress(player);
+      if (progress) {
+        room.hostSend({ type: "player_progress", playerId: player.id, progress });
+      }
+      break;
+    }
     case "mark": {
       const result = room.mark(player, msg.trackId);
       if (!result.ok) {

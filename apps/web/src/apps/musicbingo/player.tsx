@@ -4,21 +4,32 @@ import { Input } from "../../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { MusicBingoLogo } from "./logo";
 import { useRoom } from "./useRoom";
-import { Trophy } from "lucide-react";
+import { PATTERN_INSTRUCTIONS } from "./types";
+import {
+  getOrCreatePlayerId,
+  getStoredPlayerName,
+  storePlayerName,
+  loadMarkedIds,
+  saveMarkedIds,
+} from "./playerSession";
+import { Trophy, Info } from "lucide-react";
 
 interface PlayerViewProps {
   roomCode: string;
 }
 
 export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
-  const [name, setName] = React.useState("");
+  const storedName = getStoredPlayerName();
+  const [name, setName] = React.useState(storedName);
   const [joined, setJoined] = React.useState(false);
-  const [marked, setMarked] = React.useState<Set<string>>(new Set());
+  const [marked, setMarked] = React.useState<Set<string>>(loadMarkedIds());
+  const playerId = React.useMemo(() => getOrCreatePlayerId(), []);
 
   const { connected, error, roomState, card, bingo, bingoError, send } = useRoom(
     "player",
     roomCode,
-    joined ? name : undefined
+    joined ? name : undefined,
+    playerId
   );
 
   React.useEffect(() => {
@@ -41,6 +52,7 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
         next.add(trackId);
         send({ type: "mark", trackId });
       }
+      saveMarkedIds(next);
       return next;
     });
   }
@@ -48,6 +60,15 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
   function claimBingo() {
     send({ type: "bingo" });
   }
+
+  // Sync local marks with server once we have a card.
+  React.useEffect(() => {
+    if (!card) return;
+    const stored = loadMarkedIds();
+    if (stored.size > 0) {
+      send({ type: "sync_marks", trackIds: Array.from(stored) });
+    }
+  }, [card, send]);
 
   if (!joined) {
     return (
@@ -69,7 +90,15 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && name.trim() && setJoined(true)}
             />
-            <Button onClick={() => name.trim() && setJoined(true)} className="w-full">
+            <Button
+              onClick={() => {
+                if (name.trim()) {
+                  storePlayerName(name.trim());
+                  setJoined(true);
+                }
+              }}
+              className="w-full"
+            >
               Войти в игру
             </Button>
             {error && <p className="text-center text-sm text-rose-400">{error}</p>}
@@ -112,6 +141,15 @@ export function MusicBingoPlayer({ roomCode }: PlayerViewProps) {
           <div className="shrink-0 rounded-xl border border-rose-500/30 bg-rose-500/15 p-4 text-center">
             <p className="font-semibold text-rose-100">Пока не бинго 😅</p>
             <p className="text-sm text-rose-100/80">{bingoError.message}</p>
+          </div>
+        )}
+
+        {roomState.pattern && (
+          <div className="shrink-0 rounded-xl border border-indigo-500/30 bg-indigo-500/15 p-3 text-center">
+            <div className="flex items-center justify-center gap-2 text-sm font-semibold text-indigo-100">
+              <Info className="h-4 w-4" />
+              {PATTERN_INSTRUCTIONS[roomState.pattern] || "Соберите выигрышную комбинацию и жмите БИНГО!"}
+            </div>
           </div>
         )}
 

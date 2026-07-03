@@ -16,7 +16,12 @@ export interface RoomState {
   winners: { playerId: string; name: string; at: number }[];
 }
 
-export function useRoom(role: "host" | "player", roomCode: string, playerName?: string) {
+export function useRoom(
+  role: "host" | "player",
+  roomCode: string,
+  playerName?: string,
+  playerId?: string
+) {
   const wsRef = useRef<WebSocket | null>(null);
   const pingRef = useRef<number | null>(null);
   const reconnectRef = useRef<number | null>(null);
@@ -36,14 +41,14 @@ export function useRoom(role: "host" | "player", roomCode: string, playerName?: 
   const [card, setCard] = useState<CardCell[] | null>(null);
   const [bingo, setBingo] = useState(false);
   const [bingoError, setBingoError] = useState<{ error: string; message: string } | null>(null);
-  const [playerId, setPlayerId] = useState<string | null>(null);
+  const [myPlayerId, setMyPlayerId] = useState<string | null>(null);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
     const url = `${WS_URL}?room=${encodeURIComponent(roomCode)}&role=${role}${
       role === "player" && playerName ? `&name=${encodeURIComponent(playerName)}` : ""
-    }`;
+    }${role === "player" && playerId ? `&playerId=${encodeURIComponent(playerId)}` : ""}`;
     const ws = new WebSocket(url);
     wsRef.current = ws;
 
@@ -75,7 +80,7 @@ export function useRoom(role: "host" | "player", roomCode: string, playerName?: 
             setRoomState((s) => ({ ...s, winners: msg.winners || [] }));
             break;
           case "joined":
-            setPlayerId(msg.playerId);
+            setMyPlayerId(msg.playerId);
             break;
           case "player_joined":
           case "player_update":
@@ -129,6 +134,9 @@ export function useRoom(role: "host" | "player", roomCode: string, playerName?: 
           case "bingo_error":
             setBingoError({ error: msg.error, message: msg.message || "Пока не бинго — продолжай!" });
             break;
+          case "sync_marks_ack":
+            // optional: reconcile local marks with server
+            break;
           case "player_progress":
             setPlayers((prev) =>
               prev.map((p) =>
@@ -165,7 +173,7 @@ export function useRoom(role: "host" | "player", roomCode: string, playerName?: 
         // ignore
       }
     };
-  }, [role, roomCode, playerName]);
+  }, [role, roomCode, playerName, playerId]);
 
   useEffect(() => {
     connect();
@@ -211,7 +219,7 @@ export function useRoom(role: "host" | "player", roomCode: string, playerName?: 
     card,
     bingo,
     bingoError,
-    playerId,
+    playerId: myPlayerId,
     send,
   };
 }
