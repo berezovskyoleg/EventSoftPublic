@@ -17,6 +17,8 @@ class Room {
     this.pattern = null;
     this.trackPool = []; // { id, title, artist }[]
     this.playedTrackIds = new Set();
+    this.usedTrackIds = new Set(); // tracks played across all rounds of this game
+    this.knownTrackPoolIds = new Set(); // ids of the current playlist
     this.winners = []; // { playerId, name, at }[]
   }
 
@@ -355,10 +357,24 @@ function handleHostMessage(room, ws, msg) {
         ws.send(JSON.stringify({ type: "error", message: "Need at least 25 tracks" }));
         return;
       }
+      const incomingIds = new Set(msg.trackPool.map((t) => t.id));
+      // If the playlist changed, reset the used-track memory.
+      if (room.knownTrackPoolIds.size !== incomingIds.size || ![...incomingIds].every((id) => room.knownTrackPoolIds.has(id))) {
+        room.usedTrackIds.clear();
+        room.knownTrackPoolIds = incomingIds;
+      }
+      const available = msg.trackPool.filter((t) => !room.usedTrackIds.has(t.id));
+      if (available.length < 25) {
+        ws.send(JSON.stringify({
+          type: "error",
+          message: `Only ${available.length} unused tracks left. Reset the game or add more tracks.`,
+        }));
+        return;
+      }
       room.phase = "playing";
       room.roundNumber = msg.roundNumber || room.roundNumber;
       room.pattern = msg.pattern || room.pattern;
-      room.trackPool = msg.trackPool;
+      room.trackPool = available;
       room.playedTrackIds.clear();
       room.winners = [];
       for (const p of room.players.values()) {
@@ -379,6 +395,7 @@ function handleHostMessage(room, ws, msg) {
     }
     case "track_started": {
       room.playedTrackIds.add(msg.trackId);
+      room.usedTrackIds.add(msg.trackId);
       room.broadcastToAll({
         type: "track_started",
         trackId: msg.trackId,
@@ -418,6 +435,8 @@ function handleHostMessage(room, ws, msg) {
       room.pattern = null;
       room.trackPool = [];
       room.playedTrackIds.clear();
+      room.usedTrackIds.clear();
+      room.knownTrackPoolIds.clear();
       room.winners = [];
       room.broadcastToAll({ type: "reset_game" });
       break;

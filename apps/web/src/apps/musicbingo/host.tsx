@@ -57,7 +57,7 @@ export function MusicBingoHost() {
   const roomCode = config.roomCode;
   const inviteUrl = `${window.location.origin}/musicbingo/play?room=${encodeURIComponent(roomCode)}`;
 
-  const { connected, players, roomState, send } = useRoom("host", roomCode);
+  const { connected, error: wsError, players, roomState, send } = useRoom("host", roomCode);
 
   React.useEffect(() => {
     QRCode.toString(inviteUrl, { type: "svg", width: 200, margin: 2 }, (err, svg) => {
@@ -232,6 +232,12 @@ export function MusicBingoHost() {
             </TabsList>
           </Tabs>
         </header>
+
+        {wsError && (
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/15 px-4 py-3 text-sm text-rose-100">
+            {wsError}
+          </div>
+        )}
 
         <Tabs value={tab} onValueChange={setTab}>
           <TabsContent value="play" className="space-y-4">
