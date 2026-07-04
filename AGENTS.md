@@ -5,7 +5,8 @@
 ### 1. Never leave backup nginx configs in `sites-enabled`
 - After editing `/etc/nginx/sites-enabled/*`, always remove any `.bak` files you created.
 - Duplicate `server_name` blocks cause nginx to pick the wrong config and break HTTPS.
-- Use `nginx -t && systemctl reload nginx` after every change.
+- Run `nginx -t` after every change.
+- If you touched SSL, HTTP/2, or WebSocket settings, use `systemctl restart nginx` instead of `reload`. Stale nginx workers can keep a broken SSL context alive and cause intermittent timeouts for users.
 
 ### 2. Keep TLS settings consistent across all server blocks on port 443
 - This server runs **nginx 1.24 + OpenSSL 3.0**, which has a known TLS 1.3 handshake bug.
