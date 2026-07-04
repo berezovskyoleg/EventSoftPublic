@@ -352,6 +352,8 @@ function setupMusicBingoWSS(server) {
 
 function handleHostMessage(room, ws, msg) {
   switch (msg.type) {
+    case "ping":
+      break;
     case "start_round": {
       if (!Array.isArray(msg.trackPool) || msg.trackPool.length < 25) {
         ws.send(JSON.stringify({ type: "error", message: "Need at least 25 tracks" }));
