@@ -61,7 +61,11 @@ export function MusicBingoHost() {
 
   React.useEffect(() => {
     QRCode.toString(inviteUrl, { type: "svg", width: 200, margin: 2 }, (err, svg) => {
-      if (!err) setQrSvg(svg);
+      if (!err) {
+        // Make SVG responsive so it fits its container.
+        const responsive = svg.replace(/width="200"/, 'width="100%"').replace(/height="200"/, 'height="auto"');
+        setQrSvg(responsive);
+      }
     });
   }, [inviteUrl]);
 
@@ -344,7 +348,9 @@ export function MusicBingoHost() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {qrSvg ? (
-                    <div dangerouslySetInnerHTML={{ __html: qrSvg }} className="mx-auto w-44 rounded-xl bg-white p-2" />
+                    <div className="mx-auto w-44 overflow-hidden rounded-xl bg-white p-2">
+                      <div dangerouslySetInnerHTML={{ __html: qrSvg }} className="h-auto w-full" />
+                    </div>
                   ) : (
                     <div className="flex h-44 items-center justify-center text-slate-400">QR...</div>
                   )}
