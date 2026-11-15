@@ -1,0 +1,5 @@
+# Files copied into each managed worktree checkout.
+# Only ignored, untracked files are eligible; tracked files come through git.
+.env
+.env.*
+!.env.example
